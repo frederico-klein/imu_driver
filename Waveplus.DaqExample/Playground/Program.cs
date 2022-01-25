@@ -1,19 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 using Waveplus.DaqSys;
-using Waveplus.DaqSys.Definitions;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
 
 namespace Playground
 {
-     class Program
-     {
+    class Program
+    {
         //public static void DisplayArray(Array arr, string name)
         //{
         //    Console.Write("{0,11}:", name);
@@ -58,29 +54,29 @@ namespace Playground
             ConfigureDaq();
 
             //float[,,] googogo = new float[32, 3, 20000];
-//1
-            float[,]   Samples1              = new float[32, 20000];
-            float[,,]  ImuSamples1           = new float[32, 4, 20000];
-            float[,,]  AccelerometerSamples1 = new float[32, 3, 20000];
-            float[,,]  GyroscopeSamples1     = new float[32, 3, 20000];
-            float[,,]  MagnetometerSamples1  = new float[32, 3, 20000];
-            float[,]   FootSwSamples1        = new float[2, 20000];
-            float[]    SyncSamples1          = new float[20000];
-            short[,]   SensorStates1         = new short[32, 20000];
-            short[,]   FootSwSensorStates1   = new short[2, 20000];
-            int  []    SensorRFLostPackets1  = new int  [32];
-            int  []    imuCalibrationStep1   = new int  [32];
-//2
-            float[,]   Samples2              = new float[32, 20000];
-            float[,,]  ImuSamples2           = new float[32, 4, 20000];
-            float[,,]  AccelerometerSamples2 = new float[32, 3, 20000];
-            float[,,]  GyroscopeSamples2     = new float[32, 3, 20000];
-            float[,,]  MagnetometerSamples2  = new float[32, 3, 20000];
-            float[,]   FootSwSamples2        = new float[2, 20000];
-            short[,]   SensorStates2         = new short[32, 20000];
-            short[,]   FootSwSensorStates2   = new short[2, 20000];
-            int  []    SensorRFLostPackets2  = new int  [32];
-            int  []    imuCalibrationStep2   = new int  [32];
+            //1
+            float[,] Samples1 = new float[32, 20000];
+            float[,,] ImuSamples1 = new float[32, 4, 20000];
+            float[,,] AccelerometerSamples1 = new float[32, 3, 20000];
+            float[,,] GyroscopeSamples1 = new float[32, 3, 20000];
+            float[,,] MagnetometerSamples1 = new float[32, 3, 20000];
+            float[,] FootSwSamples1 = new float[2, 20000];
+            float[] SyncSamples1 = new float[20000];
+            short[,] SensorStates1 = new short[32, 20000];
+            short[,] FootSwSensorStates1 = new short[2, 20000];
+            int[] SensorRFLostPackets1 = new int[32];
+            int[] imuCalibrationStep1 = new int[32];
+            //2
+            float[,] Samples2 = new float[32, 20000];
+            float[,,] ImuSamples2 = new float[32, 4, 20000];
+            float[,,] AccelerometerSamples2 = new float[32, 3, 20000];
+            float[,,] GyroscopeSamples2 = new float[32, 3, 20000];
+            float[,,] MagnetometerSamples2 = new float[32, 3, 20000];
+            float[,] FootSwSamples2 = new float[2, 20000];
+            short[,] SensorStates2 = new short[32, 20000];
+            short[,] FootSwSensorStates2 = new short[2, 20000];
+            int[] SensorRFLostPackets2 = new int[32];
+            int[] imuCalibrationStep2 = new int[32];
 
 
             // float[,] Samples ;
@@ -98,7 +94,7 @@ namespace Playground
             // int DataTransferRate;
 
 
-        StartServer();
+            StartServer();
             networkStream = WaitForClient();
 
             Console.WriteLine("Starting capture");
@@ -112,7 +108,7 @@ namespace Playground
                 //System.Reflection.FieldInfo field = typeof(DaqSystem).GetField("_dataSyncBuffer1", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                 //DataSyncBuffer spoofedBuffer1 = (DataSyncBuffer)field.GetValue(daqSystem);
                 // here i want to change the
-                googogo[0, 0, 0] = 14.0F;
+                GyroscopeSamples1[0, 0, 0] = 14.0F;
                 //spoofedBuffer1.AccelerometerSamples = googogo;
                 //field.SetValue(daqSystem, spoofedBuffer1);
                 e.Samples = Samples1;
@@ -131,7 +127,7 @@ namespace Playground
         {
             // Start server
             IPAddress localAdd = IPAddress.Parse("127.0.0.1");
-            someone = new IPEndPoint(localAdd.Address ,5001);
+            someone = new IPEndPoint(localAdd.Address, 5001);
             int port = 5000;
             int port2 = 5001;
             listener = new TcpListener(localAdd, port);
@@ -152,7 +148,8 @@ namespace Playground
             return client.GetStream();
         }
 
-        private void Send(double[] values) {
+        private void Send(double[] values)
+        {
             Buffer.BlockCopy(values, 0, buffer, 0, values.Length * 8);
             networkStream.Write(buffer, 0, values.Length * 8);
         }
@@ -167,7 +164,7 @@ namespace Playground
             // Configure sensors
             // .InstalledSensors = 16, not the number of sensed sensors
             // Configure sensors from channel 1-8 as EMG sensors, 9-16 as IMU sensors
-            for (int EMGsensorNumber = 0; EMGsensorNumber < daqSystem.InstalledSensors-8; EMGsensorNumber++)
+            for (int EMGsensorNumber = 0; EMGsensorNumber < daqSystem.InstalledSensors - 8; EMGsensorNumber++)
             {
                 Console.WriteLine("Configuring EMG sensor #" + EMGsensorNumber);
                 daqSystem.ConfigureSensor(
@@ -193,11 +190,11 @@ namespace Playground
 
         private void Capture_DataAvailable(object sender, DataAvailableEventArgs e)
         {
-            int samplesPerChannel =e.ScanNumber; // what's this?
+            int samplesPerChannel = e.ScanNumber; // what's this?
             Console.WriteLine("scan number ???" + e.ScanNumber);
             int channelsNumber = 16; // Number of output channels
-            double[] values = new double[samplesPerChannel*channelsNumber]; // Change to add more sensors
-            for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber+1) // This loops captures data from sensor # sampleNumber+1
+            double[] values = new double[samplesPerChannel * channelsNumber]; // Change to add more sensors
+            for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber + 1) // This loops captures data from sensor # sampleNumber+1
             {
                 Console.WriteLine("EMGSensor #" + 1 + ": " + e.Samples[0, sampleNumber]);
                 Console.WriteLine("EMGSensor #" + 2 + ": " + e.Samples[1, sampleNumber]);
@@ -259,7 +256,7 @@ namespace Playground
                 values[sampleNumber * 16 + 14] = e.AccelerometerSamples[13, 1, sampleNumber];
                 values[sampleNumber * 16 + 15] = e.AccelerometerSamples[13, 2, sampleNumber];
                 Console.WriteLine("values.Length:" + values.Length);
-                Console.WriteLine("ScanNumber:" +e.ScanNumber);
+                Console.WriteLine("ScanNumber:" + e.ScanNumber);
                 //DisplayArray(values, "wo");
 
                 //values[sampleNumber * 8 + 4] = e.Samples[4, sampleNumber];

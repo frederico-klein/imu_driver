@@ -1,10 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27428.2037
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Waveplus.DaqExample", "Waveplus.DaqExample.csproj", "{6143D038-73CF-45EF-995D-2BB42621BDF0}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "Playground\Playground.csproj", "{E5D6DCD4-4A36-4839-A8AE-614AE84B0B63}"
 EndProject
 Global
@@ -17,18 +15,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Debug|x64.Build.0 = Debug|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Debug|x86.Build.0 = Debug|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Release|x64.ActiveCfg = Release|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Release|x64.Build.0 = Release|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Release|x86.ActiveCfg = Release|Any CPU
-		{6143D038-73CF-45EF-995D-2BB42621BDF0}.Release|x86.Build.0 = Release|Any CPU
 		{E5D6DCD4-4A36-4839-A8AE-614AE84B0B63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E5D6DCD4-4A36-4839-A8AE-614AE84B0B63}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5D6DCD4-4A36-4839-A8AE-614AE84B0B63}.Debug|x64.ActiveCfg = Debug|Any CPU
