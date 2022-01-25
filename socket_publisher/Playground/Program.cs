@@ -10,22 +10,6 @@ namespace Playground
 {
     class Program
     {
-        //public static void DisplayArray(Array arr, string name)
-        //{
-        //    Console.Write("{0,11}:", name);
-        //    for (int ctr = 0; ctr < arr.Length; ctr++)
-        //    {
-        //        byte[] bytes;
-        //        if (arr is double[])
-        //            bytes = BitConverter.GetBytes((double)arr.GetValue(ctr));
-        //        else
-        //            bytes = BitConverter.GetBytes((short)arr.GetValue(ctr));
-
-        //        foreach (byte byteValue in bytes)
-        //            Console.Write(" {0:X2}", byteValue);
-        //    }
-        //    Console.WriteLine();
-        //}
         static void Main()
         {
             /*
@@ -46,6 +30,7 @@ namespace Playground
         UdpClient listener2;
         NetworkStream networkStream;
         IPEndPoint someone;
+        UDPSocket c = new UDPSocket();
 
         byte[] buffer = new byte[5000];
 
@@ -135,6 +120,10 @@ namespace Playground
             listener.Start();
             Console.WriteLine("Listening on " + localAdd + " " + port);
             Console.WriteLine("Also spitting info in udp in " + localAdd + " " + port2);
+
+            // now the third horriblest serverino:
+            c.Client("127.0.0.1", 8080);
+
 
         }
 
@@ -270,6 +259,10 @@ namespace Playground
             Send(values);
             Byte[] sendBytes = GetBytes(values);
             listener2.Send(sendBytes, sendBytes.Length, someone);
+
+            //servidor numbero 3!
+            c.Send("TEST/JKSDFVHS!!");
+
             //foreach (int value in values)
             //    Console.Write("{0}  ", value);
             //Console.WriteLine("Values has been sent");
