@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -31,12 +32,52 @@ namespace Playground
         NetworkStream networkStream;
         IPEndPoint someone;
         UDPSocket c = new UDPSocket();
+        string[] imu_names;
 
         byte[] buffer = new byte[5000];
+
+        public DataAvailableEventArgs DistrDaq(string[] row)
+        {
+            DataAvailableEventArgs e = new DataAvailableEventArgs();
+            for (int i =0; i< imu_names.Length; i++)
+            {
+                string imu = imu_names[i];
+                Console.WriteLine("evaling imu( "+ i.ToString() + " ):" + imu);
+                // now there is a fixed sequence which i must follow
+                //q1,q2,q3,q4
+                //ax,ay,az
+                //gx,gy,gz
+                //mx,my,mz
+                //barometer
+                //linAcc(x,y,z)
+                //altitude
+                int I = i * 17;
+                e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
+                e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
+                e.ImuSamples[i, 2, 0] = float.Parse(row[I + 2]);
+                e.ImuSamples[i, 3, 0] = float.Parse(row[I + 3]);
+                e.AccelerometerSamples[i, 0, 0] =float.Parse(row[I + 4]);
+                e.AccelerometerSamples[i, 1, 0] =float.Parse(row[I + 5]);
+                e.AccelerometerSamples[i, 2, 0] =float.Parse(row[I + 6]);
+                e.GyroscopeSamples[i, 0, 0] = float.Parse(row[I + 7]);
+                e.GyroscopeSamples[i, 1, 0] = float.Parse(row[I + 8]);
+                e.GyroscopeSamples[i, 2, 0] = float.Parse(row[I + 9]);
+                e.MagnetometerSamples[i, 0, 0] = float.Parse(row [I + 10]);
+                e.MagnetometerSamples[i, 1, 0] = float.Parse(row [I + 11]);
+                e.MagnetometerSamples[i, 2, 0] = float.Parse(row [I + 12]);
+                //e.Barometer, linAcc, altitude // no existe!
+                
+
+            }
+            return e;
+        }
 
         public Program()
         {
             ConfigureDaq();
+            imu_names = new string[] {"a","b","c","d",
+                                      "e","f","g","h"  };
+           
 
             //float[,,] googogo = new float[32, 3, 20000];
             //1
@@ -85,25 +126,37 @@ namespace Playground
             Console.WriteLine("Starting capture");
             daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10
 
-            DataAvailableEventArgs e = new DataAvailableEventArgs();
-            while (FAKEDAQ)
+            if (FAKEDAQ)
             {
-                Console.WriteLine("LOOP");
+                // Maybe i should read the csv?
+                using (var reader = new StreamReader(@"C:\test.csv"))
+                {
+                    DataAvailableEventArgs e = new DataAvailableEventArgs();
+                    float[,] datatable = new float[17 * 8, 32000];
+                    while (FAKEDAQ && !reader.EndOfStream)
+                    {
+                        Console.WriteLine("LOOP");
+                        var line = reader.ReadLine();
+                        var values = line.Split(';');
+                        //// now i need to distribute the values to e
+                        ///
+                        e = DistrDaq(values);
+                        //System.Reflection.FieldInfo field = typeof(DaqSystem).GetField("_dataSyncBuffer1", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                        //DataSyncBuffer spoofedBuffer1 = (DataSyncBuffer)field.GetValue(daqSystem);
+                        // here i want to change the
+                        GyroscopeSamples1[0, 0, 0] = 14.0F;
+                        //spoofedBuffer1.AccelerometerSamples = googogo;
+                        //field.SetValue(daqSystem, spoofedBuffer1);
+                        e.Samples = Samples1;
+                        e.GyroscopeSamples = GyroscopeSamples1;
+                        e.AccelerometerSamples = AccelerometerSamples1;
+                        e.ScanNumber = 4;
+                        Capture_DataAvailable(null, e);
 
-                //System.Reflection.FieldInfo field = typeof(DaqSystem).GetField("_dataSyncBuffer1", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                //DataSyncBuffer spoofedBuffer1 = (DataSyncBuffer)field.GetValue(daqSystem);
-                // here i want to change the
-                GyroscopeSamples1[0, 0, 0] = 14.0F;
-                //spoofedBuffer1.AccelerometerSamples = googogo;
-                //field.SetValue(daqSystem, spoofedBuffer1);
-                e.Samples = Samples1;
-                e.GyroscopeSamples = GyroscopeSamples1;
-                e.AccelerometerSamples = AccelerometerSamples1;
-                e.ScanNumber = 4;
-                Capture_DataAvailable(null, e);
 
-
-                System.Threading.Thread.Sleep(50);
+                        System.Threading.Thread.Sleep(50);
+                    }
+                }
             }
             Console.ReadKey();
         }
