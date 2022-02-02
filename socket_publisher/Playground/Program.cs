@@ -90,7 +90,7 @@ namespace Playground
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {
             TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
-            string output =  t.ToString + " ";
+            string output =  t.ToString() + " ";
             for (int i = 0; i < imu_names.Length; i++)
             {
                 output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
