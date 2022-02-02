@@ -71,13 +71,43 @@ namespace Playground
             }
             return e;
         }
+        public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
+        {
+            string output = "";
+            for (int i = 0; i < imu_names.Length; i++)
+            {
+                output += e.ImuSamples[i, 0, sampleNumber].ToString();
+                output += e.ImuSamples[i, 1, sampleNumber].ToString();
+                output += e.ImuSamples[i, 2, sampleNumber].ToString();
+                output += e.ImuSamples[i, 3, sampleNumber].ToString();
+                output += e.AccelerometerSamples[i,0, sampleNumber].ToString();
+                output += e.AccelerometerSamples[i,1, sampleNumber].ToString();
+                output += e.AccelerometerSamples[i,2, sampleNumber].ToString();
+                output += e.GyroscopeSamples[i,0, sampleNumber].ToString();
+                output += e.GyroscopeSamples[i,1, sampleNumber].ToString();
+                output += e.GyroscopeSamples[i,2, sampleNumber].ToString();
+                output += e.MagnetometerSamples[i,0, sampleNumber].ToString();
+                output += e.MagnetometerSamples[i,1, sampleNumber].ToString();
+                output += e.MagnetometerSamples[i,2, sampleNumber].ToString();
+                output += "0.0"; //barometer
+                output += "0.0"; //linAccx
+                output += "0.0"; //linAccy
+                output += "0.0"; //linAccz
+                output += "0.0"; //altitude
+            }
+            Console.WriteLine("Parsed output: "+ output);
+            return output;       
+        
+        }
 
         public Program()
         {
             ConfigureDaq();
             imu_names = new string[] {"a","b","c","d",
-                                      "e","f","g","h"  };
-           
+                                      "e","f","g","h"  };  //lower body
+            //imu_names = new string[] {"a","b","c","d",
+            //                          "e","f","g","h"  }; //upper body
+
 
             //float[,,] googogo = new float[32, 3, 20000];
             //1
@@ -129,10 +159,10 @@ namespace Playground
             if (FAKEDAQ)
             {
                 // Maybe i should read the csv?
-                using (var reader = new StreamReader(@"C:\test.csv"))
+                using (var reader = new StreamReader(@"C:\Users\frekle\source\repos\docker-opensimrt\connect\gait1992_imu.csv"))
                 {
                     DataAvailableEventArgs e = new DataAvailableEventArgs();
-                    float[,] datatable = new float[17 * 8, 32000];
+                    //float[,] datatable = new float[17 * 8, 32000];
                     while (FAKEDAQ && !reader.EndOfStream)
                     {
                         Console.WriteLine("LOOP");
@@ -144,12 +174,12 @@ namespace Playground
                         //System.Reflection.FieldInfo field = typeof(DaqSystem).GetField("_dataSyncBuffer1", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                         //DataSyncBuffer spoofedBuffer1 = (DataSyncBuffer)field.GetValue(daqSystem);
                         // here i want to change the
-                        GyroscopeSamples1[0, 0, 0] = 14.0F;
+                        //GyroscopeSamples1[0, 0, 0] = 14.0F;
                         //spoofedBuffer1.AccelerometerSamples = googogo;
                         //field.SetValue(daqSystem, spoofedBuffer1);
-                        e.Samples = Samples1;
-                        e.GyroscopeSamples = GyroscopeSamples1;
-                        e.AccelerometerSamples = AccelerometerSamples1;
+                        //e.Samples = Samples1;
+                        //e.GyroscopeSamples = GyroscopeSamples1;
+                        //e.AccelerometerSamples = AccelerometerSamples1;
                         e.ScanNumber = 4;
                         Capture_DataAvailable(null, e);
 
@@ -236,6 +266,7 @@ namespace Playground
             Console.WriteLine("scan number ???" + e.ScanNumber);
             int channelsNumber = 16; // Number of output channels
             double[] values = new double[samplesPerChannel * channelsNumber]; // Change to add more sensors
+            string output = "";
             for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber + 1) // This loops captures data from sensor # sampleNumber+1
             {
                 Console.WriteLine("EMGSensor #" + 1 + ": " + e.Samples[0, sampleNumber]);
@@ -306,7 +337,8 @@ namespace Playground
                 //values[sampleNumber * 8 + 6] = e.Samples[6, sampleNumber];
                 //values[sampleNumber * 8 + 7] = e.Samples[7, sampleNumber];
 
-
+                //
+                output += eEeParser(e, sampleNumber);
 
             }
             Send(values);
@@ -314,7 +346,7 @@ namespace Playground
             listener2.Send(sendBytes, sendBytes.Length, someone);
 
             //servidor numbero 3!
-            c.Send("TEST/JKSDFVHS!!");
+            c.Send(output);
 
             //foreach (int value in values)
             //    Console.Write("{0}  ", value);
