@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
+
 using Waveplus.DaqSys;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
@@ -27,14 +25,9 @@ namespace Playground
         }
         bool FAKEDAQ = true;
         DaqSystem daqSystem;
-        TcpListener listener;
-        UdpClient listener2;
-        NetworkStream networkStream;
-        IPEndPoint someone;
+
         UDPSocket c = new UDPSocket();
         string[] imu_names;
-
-        byte[] buffer = new byte[5000];
 
         public DataAvailableEventArgs DistrDaq(string[] row)
         {
@@ -52,48 +45,72 @@ namespace Playground
                 //linAcc(x,y,z)
                 //altitude
                 int I = i * 17;
+                e.Samples = new float[32,32000];
+                e.ImuSamples = new float[32, 4, 32000];
                 e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
                 e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
                 e.ImuSamples[i, 2, 0] = float.Parse(row[I + 2]);
                 e.ImuSamples[i, 3, 0] = float.Parse(row[I + 3]);
-                e.AccelerometerSamples[i, 0, 0] =float.Parse(row[I + 4]);
-                e.AccelerometerSamples[i, 1, 0] =float.Parse(row[I + 5]);
-                e.AccelerometerSamples[i, 2, 0] =float.Parse(row[I + 6]);
+                e.AccelerometerSamples = new float[32, 3, 32000];
+                e.AccelerometerSamples[i, 0, 0] = float.Parse(row[I + 4]);
+                e.AccelerometerSamples[i, 1, 0] = float.Parse(row[I + 5]);
+                e.AccelerometerSamples[i, 2, 0] = float.Parse(row[I + 6]);
+                e.GyroscopeSamples = new float[32, 3, 32000];
                 e.GyroscopeSamples[i, 0, 0] = float.Parse(row[I + 7]);
                 e.GyroscopeSamples[i, 1, 0] = float.Parse(row[I + 8]);
                 e.GyroscopeSamples[i, 2, 0] = float.Parse(row[I + 9]);
+                e.MagnetometerSamples = new float[32, 3, 32000];
                 e.MagnetometerSamples[i, 0, 0] = float.Parse(row [I + 10]);
                 e.MagnetometerSamples[i, 1, 0] = float.Parse(row [I + 11]);
                 e.MagnetometerSamples[i, 2, 0] = float.Parse(row [I + 12]);
-                //e.Barometer, linAcc, altitude // no existe!
-                
+                                                      //e.Barometer, linAcc, altitude // no existe!
+
+                //e.ImuSamples = new float[32, 4, 32000];
+                //e.ImuSamples[i, 0, 0] = 0.0F;//float.Parse(row[I + 0]);
+                //e.ImuSamples[i, 1, 0] = 0.0F;//float.Parse(row[I + 1]);
+                //e.ImuSamples[i, 2, 0] = 0.0F;//float.Parse(row[I + 2]);
+                //e.ImuSamples[i, 3, 0] = 0.0F;//float.Parse(row[I + 3]);
+                //e.AccelerometerSamples = new float[32, 3, 32000];
+                //e.AccelerometerSamples[i, 0, 0] = 0.0F;//float.Parse(row[I + 4]);
+                //e.AccelerometerSamples[i, 1, 0] = 0.0F;//float.Parse(row[I + 5]);
+                //e.AccelerometerSamples[i, 2, 0] = 0.0F;//float.Parse(row[I + 6]);
+                //e.GyroscopeSamples = new float[32, 3, 32000];
+                //e.GyroscopeSamples[i, 0, 0] = 0.0F;//float.Parse(row[I + 7]);
+                //e.GyroscopeSamples[i, 1, 0] = 0.0F;//float.Parse(row[I + 8]);
+                //e.GyroscopeSamples[i, 2, 0] = 0.0F;//float.Parse(row[I + 9]);
+                //e.MagnetometerSamples = new float[32, 3, 32000];
+                //e.MagnetometerSamples[i, 0, 0] = 0.0F;//float.Parse(row [I + 10]);
+                //e.MagnetometerSamples[i, 1, 0] = 0.0F;//float.Parse(row [I + 11]);
+                //e.MagnetometerSamples[i, 2, 0] = 0.0F;//float.Parse(row [I + 12]);
+                //                                      //e.Barometer, linAcc, altitude // no existe!
 
             }
             return e;
         }
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {
-            string output = "";
+            TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
+            string output =  t.ToString + " ";
             for (int i = 0; i < imu_names.Length; i++)
             {
-                output += e.ImuSamples[i, 0, sampleNumber].ToString();
-                output += e.ImuSamples[i, 1, sampleNumber].ToString();
-                output += e.ImuSamples[i, 2, sampleNumber].ToString();
-                output += e.ImuSamples[i, 3, sampleNumber].ToString();
-                output += e.AccelerometerSamples[i,0, sampleNumber].ToString();
-                output += e.AccelerometerSamples[i,1, sampleNumber].ToString();
-                output += e.AccelerometerSamples[i,2, sampleNumber].ToString();
-                output += e.GyroscopeSamples[i,0, sampleNumber].ToString();
-                output += e.GyroscopeSamples[i,1, sampleNumber].ToString();
-                output += e.GyroscopeSamples[i,2, sampleNumber].ToString();
-                output += e.MagnetometerSamples[i,0, sampleNumber].ToString();
-                output += e.MagnetometerSamples[i,1, sampleNumber].ToString();
-                output += e.MagnetometerSamples[i,2, sampleNumber].ToString();
-                output += "0.0"; //barometer
-                output += "0.0"; //linAccx
-                output += "0.0"; //linAccy
-                output += "0.0"; //linAccz
-                output += "0.0"; //altitude
+                output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
+                output += e.ImuSamples[i, 1, sampleNumber].ToString() + " ";
+                output += e.ImuSamples[i, 2, sampleNumber].ToString() + " ";
+                output += e.ImuSamples[i, 3, sampleNumber].ToString() + " ";
+                output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
+                output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
+                output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
+                output += e.GyroscopeSamples[i,0, sampleNumber].ToString() + " ";
+                output += e.GyroscopeSamples[i,1, sampleNumber].ToString() + " ";
+                output += e.GyroscopeSamples[i,2, sampleNumber].ToString() + " ";
+                output += e.MagnetometerSamples[i,0, sampleNumber].ToString() + " ";
+                output += e.MagnetometerSamples[i,1, sampleNumber].ToString() + " ";
+                output += e.MagnetometerSamples[i,2, sampleNumber].ToString() + " ";
+                output += "0.0 "; //barometer
+                output += "0.0 "; //linAccx
+                output += "0.0 "; //linAccy
+                output += "0.0 "; //linAccz
+                output += "0.0 "; //altitude
             }
             Console.WriteLine("Parsed output: "+ output);
             return output;       
@@ -108,81 +125,33 @@ namespace Playground
             //imu_names = new string[] {"a","b","c","d",
             //                          "e","f","g","h"  }; //upper body
 
-
-            //float[,,] googogo = new float[32, 3, 20000];
-            //1
-            float[,] Samples1 = new float[32, 20000];
-            float[,,] ImuSamples1 = new float[32, 4, 20000];
-            float[,,] AccelerometerSamples1 = new float[32, 3, 20000];
-            float[,,] GyroscopeSamples1 = new float[32, 3, 20000];
-            float[,,] MagnetometerSamples1 = new float[32, 3, 20000];
-            float[,] FootSwSamples1 = new float[2, 20000];
-            float[] SyncSamples1 = new float[20000];
-            short[,] SensorStates1 = new short[32, 20000];
-            short[,] FootSwSensorStates1 = new short[2, 20000];
-            int[] SensorRFLostPackets1 = new int[32];
-            int[] imuCalibrationStep1 = new int[32];
-            //2
-            float[,] Samples2 = new float[32, 20000];
-            float[,,] ImuSamples2 = new float[32, 4, 20000];
-            float[,,] AccelerometerSamples2 = new float[32, 3, 20000];
-            float[,,] GyroscopeSamples2 = new float[32, 3, 20000];
-            float[,,] MagnetometerSamples2 = new float[32, 3, 20000];
-            float[,] FootSwSamples2 = new float[2, 20000];
-            short[,] SensorStates2 = new short[32, 20000];
-            short[,] FootSwSensorStates2 = new short[2, 20000];
-            int[] SensorRFLostPackets2 = new int[32];
-            int[] imuCalibrationStep2 = new int[32];
-
-
-            // float[,] Samples ;
-            // float[,,] ImuSamples ;
-            // float[,,] AccelerometerSamples ;
-            // float[,,] GyroscopeSamples ;
-            // float[,,] MagnetometerSamples ;
-            // float[] SyncSamples ;
-            // short[,] SensorStates ;
-            // float[,] FootSwSamples ;
-            // short[,] FootSwSensorStates ;
-            // int[] SensorRFLostPackets ;
-            // int[] imuCalibrationStep ;
-            // int SensorUSBLostPackets;
-            // int DataTransferRate;
-
-
             StartServer();
-            networkStream = WaitForClient();
-
+            
             Console.WriteLine("Starting capture");
             daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10
 
             if (FAKEDAQ)
             {
-                // Maybe i should read the csv?
-                using (var reader = new StreamReader(@"C:\Users\frekle\source\repos\docker-opensimrt\connect\gait1992_imu.csv"))
+                using (var reader = new StreamReader(@"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv"))
                 {
                     DataAvailableEventArgs e = new DataAvailableEventArgs();
                     //float[,] datatable = new float[17 * 8, 32000];
+                    reader.ReadLine();
+                    reader.ReadLine();
+                    reader.ReadLine();
+                    reader.ReadLine();
+
+                    reader.ReadLine(); // labels
                     while (FAKEDAQ && !reader.EndOfStream)
                     {
                         Console.WriteLine("LOOP");
                         var line = reader.ReadLine();
-                        var values = line.Split(';');
-                        //// now i need to distribute the values to e
-                        ///
+                        var values = line.Split(',');
+                        Console.WriteLine("rowread:"+values);
                         e = DistrDaq(values);
-                        //System.Reflection.FieldInfo field = typeof(DaqSystem).GetField("_dataSyncBuffer1", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                        //DataSyncBuffer spoofedBuffer1 = (DataSyncBuffer)field.GetValue(daqSystem);
-                        // here i want to change the
-                        //GyroscopeSamples1[0, 0, 0] = 14.0F;
-                        //spoofedBuffer1.AccelerometerSamples = googogo;
-                        //field.SetValue(daqSystem, spoofedBuffer1);
-                        //e.Samples = Samples1;
-                        //e.GyroscopeSamples = GyroscopeSamples1;
-                        //e.AccelerometerSamples = AccelerometerSamples1;
+
                         e.ScanNumber = 4;
                         Capture_DataAvailable(null, e);
-
 
                         System.Threading.Thread.Sleep(50);
                     }
@@ -193,37 +162,10 @@ namespace Playground
 
         private void StartServer()
         {
-            // Start server
-            IPAddress localAdd = IPAddress.Parse("127.0.0.1");
-            someone = new IPEndPoint(localAdd.Address, 5001);
-            int port = 5000;
-            int port2 = 5001;
-            listener = new TcpListener(localAdd, port);
-            listener2 = new UdpClient(port2);
-            listener.Start();
-            Console.WriteLine("Listening on " + localAdd + " " + port);
-            Console.WriteLine("Also spitting info in udp in " + localAdd + " " + port2);
-
+            Console.WriteLine("Will spit data as udp in 127.0.0.1, 8080");
             // now the third horriblest serverino:
             c.Client("127.0.0.1", 8080);
 
-
-        }
-
-        private NetworkStream WaitForClient()
-        {
-            // Wait for client to connect
-            TcpClient client = listener.AcceptTcpClient();
-            Console.WriteLine("Client connected");
-
-            // Get stream to read/write data
-            return client.GetStream();
-        }
-
-        private void Send(double[] values)
-        {
-            Buffer.BlockCopy(values, 0, buffer, 0, values.Length * 8);
-            networkStream.Write(buffer, 0, values.Length * 8);
         }
 
         private void ConfigureDaq()
@@ -341,9 +283,6 @@ namespace Playground
                 output += eEeParser(e, sampleNumber);
 
             }
-            Send(values);
-            Byte[] sendBytes = GetBytes(values);
-            listener2.Send(sendBytes, sendBytes.Length, someone);
 
             //servidor numbero 3!
             c.Send(output);
@@ -351,11 +290,6 @@ namespace Playground
             //foreach (int value in values)
             //    Console.Write("{0}  ", value);
             //Console.WriteLine("Values has been sent");
-        }
-
-        static byte[] GetBytes(double[] values)
-        {
-            return values.SelectMany(value => BitConverter.GetBytes(value)).ToArray();
         }
 
         private void Device_StateChanged(object sender, DeviceStateChangedEventArgs e)
