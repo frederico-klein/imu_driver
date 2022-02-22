@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-
+using System.Linq;
 using Waveplus.DaqSys;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
@@ -29,9 +30,16 @@ namespace Playground
         UDPSocket c = new UDPSocket();
         string[] imu_names;
 
-        public DataAvailableEventArgs DistrDaq(string[] row)
+        public DataAvailableEventArgs DistrDaq(string[] trow)
         {
             DataAvailableEventArgs e = new DataAvailableEventArgs();
+            e.Samples = new float[32, 32000];
+            e.ImuSamples = new float[32, 4, 32000];
+            e.AccelerometerSamples = new float[32, 3, 32000];
+            e.GyroscopeSamples = new float[32, 3, 32000];
+            e.MagnetometerSamples = new float[32, 3, 32000];
+            string[] row = trow.Skip(1).ToArray();
+            float time = float.Parse(trow[0]); /// not sure how to save it in e yet.
             for (int i =0; i< imu_names.Length; i++)
             {
                 string imu = imu_names[i];
@@ -44,22 +52,17 @@ namespace Playground
                 //barometer
                 //linAcc(x,y,z)
                 //altitude
-                int I = i * 17;
-                e.Samples = new float[32,32000];
-                e.ImuSamples = new float[32, 4, 32000];
+                int I = i * 18;
                 e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
                 e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
                 e.ImuSamples[i, 2, 0] = float.Parse(row[I + 2]);
                 e.ImuSamples[i, 3, 0] = float.Parse(row[I + 3]);
-                e.AccelerometerSamples = new float[32, 3, 32000];
                 e.AccelerometerSamples[i, 0, 0] = float.Parse(row[I + 4]);
                 e.AccelerometerSamples[i, 1, 0] = float.Parse(row[I + 5]);
                 e.AccelerometerSamples[i, 2, 0] = float.Parse(row[I + 6]);
-                e.GyroscopeSamples = new float[32, 3, 32000];
                 e.GyroscopeSamples[i, 0, 0] = float.Parse(row[I + 7]);
                 e.GyroscopeSamples[i, 1, 0] = float.Parse(row[I + 8]);
                 e.GyroscopeSamples[i, 2, 0] = float.Parse(row[I + 9]);
-                e.MagnetometerSamples = new float[32, 3, 32000];
                 e.MagnetometerSamples[i, 0, 0] = float.Parse(row [I + 10]);
                 e.MagnetometerSamples[i, 1, 0] = float.Parse(row [I + 11]);
                 e.MagnetometerSamples[i, 2, 0] = float.Parse(row [I + 12]);
@@ -90,7 +93,7 @@ namespace Playground
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {
             TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
-            string output =  t.ToString() + " ";
+            string output =  t.TotalSeconds.ToString() + " ";
             for (int i = 0; i < imu_names.Length; i++)
             {
                 output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
@@ -110,7 +113,7 @@ namespace Playground
                 output += "0.0 "; //linAccx
                 output += "0.0 "; //linAccy
                 output += "0.0 "; //linAccz
-                output += "0.0 "; //altitude
+                output += "0.0 "; //altitude ??? this should be here, but then i have one extra column
             }
             Console.WriteLine("Parsed output: "+ output);
             return output;       
@@ -146,17 +149,19 @@ namespace Playground
                     {
                         Console.WriteLine("LOOP");
                         var line = reader.ReadLine();
+                        Console.WriteLine("rowread:" + line);
                         var values = line.Split(',');
-                        Console.WriteLine("rowread:"+values);
+                        
                         e = DistrDaq(values);
 
-                        e.ScanNumber = 4;
+                        e.ScanNumber = 1;
                         Capture_DataAvailable(null, e);
 
-                        System.Threading.Thread.Sleep(50);
+                        System.Threading.Thread.Sleep(10);
                     }
                 }
             }
+            Console.WriteLine("Finished!");
             Console.ReadKey();
         }
 
@@ -211,27 +216,28 @@ namespace Playground
             string output = "";
             for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber + 1) // This loops captures data from sensor # sampleNumber+1
             {
-                Console.WriteLine("EMGSensor #" + 1 + ": " + e.Samples[0, sampleNumber]);
-                Console.WriteLine("EMGSensor #" + 2 + ": " + e.Samples[1, sampleNumber]);
-                Console.WriteLine("EMGSensor #" + 3 + ": " + e.Samples[2, sampleNumber]);
-                Console.WriteLine("EMGSensor #" + 4 + ": " + e.Samples[3, sampleNumber]);
+                Console.WriteLine("samples number:"+ sampleNumber.ToString());
+                //Console.WriteLine("EMGSensor #" + 1 + ": " + e.Samples[0, sampleNumber]);
+                //Console.WriteLine("EMGSensor #" + 2 + ": " + e.Samples[1, sampleNumber]);
+                //Console.WriteLine("EMGSensor #" + 3 + ": " + e.Samples[2, sampleNumber]);
+                //Console.WriteLine("EMGSensor #" + 4 + ": " + e.Samples[3, sampleNumber]);
 
                 //values[sampleNumber * 4 + 0] = e.Samples[0, sampleNumber];
                 //values[sampleNumber * 4 + 1] = e.Samples[1, sampleNumber];
                 //values[sampleNumber * 4 + 2] = e.Samples[2, sampleNumber];
                 //values[sampleNumber * 4 + 3] = e.Samples[3, sampleNumber];
-                Console.WriteLine("IMUSensor #" + 13 + "Gyroscope X: " + e.GyroscopeSamples[12, 0, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 13 + "Gyroscope Y: " + e.GyroscopeSamples[12, 1, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 13 + "Gyroscope Z: " + e.GyroscopeSamples[12, 2, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 13 + "Acceleration X: " + e.AccelerometerSamples[12, 0, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 13 + "Acceleration Y: " + e.AccelerometerSamples[12, 1, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 13 + "Acceleration Z: " + e.AccelerometerSamples[12, 2, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 14 + "Gyroscope X: " + e.GyroscopeSamples[13, 0, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 14 + "Gyroscope Y: " + e.GyroscopeSamples[13, 1, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 14 + "Gyroscope Z: " + e.GyroscopeSamples[13, 2, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 14 + "Acceleration X: " + e.AccelerometerSamples[13, 0, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 14 + "Acceleration Y: " + e.AccelerometerSamples[13, 1, sampleNumber]);
-                Console.WriteLine("IMUSensor #" + 14 + "Acceleration Z: " + e.AccelerometerSamples[13, 2, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 13 + "Gyroscope X: " + e.GyroscopeSamples[12, 0, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 13 + "Gyroscope Y: " + e.GyroscopeSamples[12, 1, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 13 + "Gyroscope Z: " + e.GyroscopeSamples[12, 2, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 13 + "Acceleration X: " + e.AccelerometerSamples[12, 0, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 13 + "Acceleration Y: " + e.AccelerometerSamples[12, 1, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 13 + "Acceleration Z: " + e.AccelerometerSamples[12, 2, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 14 + "Gyroscope X: " + e.GyroscopeSamples[13, 0, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 14 + "Gyroscope Y: " + e.GyroscopeSamples[13, 1, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 14 + "Gyroscope Z: " + e.GyroscopeSamples[13, 2, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 14 + "Acceleration X: " + e.AccelerometerSamples[13, 0, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 14 + "Acceleration Y: " + e.AccelerometerSamples[13, 1, sampleNumber]);
+                //Console.WriteLine("IMUSensor #" + 14 + "Acceleration Z: " + e.AccelerometerSamples[13, 2, sampleNumber]);
                 //values[sampleNumber * 22 + 0] = e.Samples[0, sampleNumber];
                 //values[sampleNumber * 22 + 1] = e.Samples[1, sampleNumber];
                 //values[sampleNumber * 22 + 2] = e.Samples[2, sampleNumber];
@@ -254,23 +260,23 @@ namespace Playground
                 //values[sampleNumber * 22 + 19] = e.ImuSamples[9, 0, sampleNumber];
                 //values[sampleNumber * 22 + 20] = e.ImuSamples[9, 1, sampleNumber];
                 //values[sampleNumber * 22 + 21] = e.ImuSamples[9, 2, sampleNumber];
-                values[sampleNumber * 16 + 0] = e.Samples[0, sampleNumber];
-                values[sampleNumber * 16 + 1] = e.Samples[1, sampleNumber];
-                values[sampleNumber * 16 + 2] = e.Samples[2, sampleNumber];
-                values[sampleNumber * 16 + 3] = e.Samples[3, sampleNumber];
-                values[sampleNumber * 16 + 4] = e.GyroscopeSamples[12, 0, sampleNumber];
-                values[sampleNumber * 16 + 5] = e.GyroscopeSamples[12, 1, sampleNumber];
-                values[sampleNumber * 16 + 6] = e.GyroscopeSamples[12, 2, sampleNumber];
-                values[sampleNumber * 16 + 7] = e.AccelerometerSamples[12, 0, sampleNumber];
-                values[sampleNumber * 16 + 8] = e.AccelerometerSamples[12, 1, sampleNumber];
-                values[sampleNumber * 16 + 9] = e.AccelerometerSamples[12, 2, sampleNumber];
-                values[sampleNumber * 16 + 10] = e.GyroscopeSamples[13, 0, sampleNumber];
-                values[sampleNumber * 16 + 11] = e.GyroscopeSamples[13, 1, sampleNumber];
-                values[sampleNumber * 16 + 12] = e.GyroscopeSamples[13, 2, sampleNumber];
-                values[sampleNumber * 16 + 13] = e.AccelerometerSamples[13, 0, sampleNumber];
-                values[sampleNumber * 16 + 14] = e.AccelerometerSamples[13, 1, sampleNumber];
-                values[sampleNumber * 16 + 15] = e.AccelerometerSamples[13, 2, sampleNumber];
-                Console.WriteLine("values.Length:" + values.Length);
+                //values[sampleNumber * 16 + 0] = e.Samples[0, sampleNumber];
+                //values[sampleNumber * 16 + 1] = e.Samples[1, sampleNumber];
+                //values[sampleNumber * 16 + 2] = e.Samples[2, sampleNumber];
+                //values[sampleNumber * 16 + 3] = e.Samples[3, sampleNumber];
+                //values[sampleNumber * 16 + 4] = e.GyroscopeSamples[12, 0, sampleNumber];
+                //values[sampleNumber * 16 + 5] = e.GyroscopeSamples[12, 1, sampleNumber];
+                //values[sampleNumber * 16 + 6] = e.GyroscopeSamples[12, 2, sampleNumber];
+                //values[sampleNumber * 16 + 7] = e.AccelerometerSamples[12, 0, sampleNumber];
+                //values[sampleNumber * 16 + 8] = e.AccelerometerSamples[12, 1, sampleNumber];
+                //values[sampleNumber * 16 + 9] = e.AccelerometerSamples[12, 2, sampleNumber];
+                //values[sampleNumber * 16 + 10] = e.GyroscopeSamples[13, 0, sampleNumber];
+                //values[sampleNumber * 16 + 11] = e.GyroscopeSamples[13, 1, sampleNumber];
+                //values[sampleNumber * 16 + 12] = e.GyroscopeSamples[13, 2, sampleNumber];
+                //values[sampleNumber * 16 + 13] = e.AccelerometerSamples[13, 0, sampleNumber];
+                //values[sampleNumber * 16 + 14] = e.AccelerometerSamples[13, 1, sampleNumber];
+                //values[sampleNumber * 16 + 15] = e.AccelerometerSamples[13, 2, sampleNumber];
+                //Console.WriteLine("values.Length:" + values.Length);
                 Console.WriteLine("ScanNumber:" + e.ScanNumber);
                 //DisplayArray(values, "wo");
 
@@ -289,7 +295,8 @@ namespace Playground
 
             //foreach (int value in values)
             //    Console.Write("{0}  ", value);
-            //Console.WriteLine("Values has been sent");
+            Console.WriteLine("Values has been sent");
+
         }
 
         private void Device_StateChanged(object sender, DeviceStateChangedEventArgs e)
