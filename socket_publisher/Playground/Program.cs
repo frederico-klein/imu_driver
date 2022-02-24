@@ -24,11 +24,14 @@ namespace Playground
             new Program();
 
         }
-        bool FAKEDAQ = true;
+        bool FAKEDAQ = false;
         DaqSystem daqSystem;
 
         UDPSocket c = new UDPSocket();
-        string[] imu_names;
+        //string[] imu_names;
+
+        Dictionary<int, string> imu_dict =
+               new Dictionary<int, string>();
 
         public DataAvailableEventArgs DistrDaq(string[] trow)
         {
@@ -40,10 +43,14 @@ namespace Playground
             e.MagnetometerSamples = new float[32, 3, 32000];
             string[] row = trow.Skip(1).ToArray();
             float time = float.Parse(trow[0]); /// not sure how to save it in e yet.
-            for (int i =0; i< imu_names.Length; i++)
-            {
-                string imu = imu_names[i];
-                Console.WriteLine("evaling imu( "+ i.ToString() + " ):" + imu);
+            //for (int i =0; i< imu_names.Length; i++)
+            foreach (KeyValuePair<int, string> ele1 in imu_dict)
+                {
+                int i = ele1.Key;
+
+                string imu = ele1.Value;
+                //string imu = imu_names[i];
+                Console.WriteLine("Evaling imu( {0} ): {1}", i.ToString(), imu);
                 // now there is a fixed sequence which i must follow
                 //q1,q2,q3,q4
                 //ax,ay,az
@@ -94,12 +101,28 @@ namespace Playground
         {
             TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
             string output =  t.TotalSeconds.ToString() + " ";
-            for (int i = 0; i < imu_names.Length; i++)
+            //for (int i = 0; i < imu_names.Length; i++)
+            foreach (KeyValuePair<int, string> ele1 in imu_dict)
             {
+                int i = ele1.Key;
+
+                string imu = ele1.Value;
+                Console.WriteLine("imu ({1}): {0}", imu, i);
+                float q0, q1, q2, q3;
+                q0 = e.ImuSamples[i, 0, sampleNumber];
+                q1 = e.ImuSamples[i, 1, sampleNumber];
+                q2 = e.ImuSamples[i, 2, sampleNumber];
+                q3 = e.ImuSamples[i, 3, sampleNumber];
+                Console.WriteLine(e.ImuSamples);
+                foreach (int j in e.ImuSamples)
+                {
+                    Console.Write("{0} ", j);
+                }
+                Console.WriteLine("quarternions: {0}, {1}, {2}, {3}", q0,q1,q2,q3);
                 output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
                 output += e.ImuSamples[i, 1, sampleNumber].ToString() + " ";
                 output += e.ImuSamples[i, 2, sampleNumber].ToString() + " ";
-                output += e.ImuSamples[i, 3, sampleNumber].ToString() + " ";
+                output += e.ImuSamples[i, 3, sampleNumber].ToString() + " ";                
                 output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
@@ -115,16 +138,20 @@ namespace Playground
                 output += "0.0 "; //linAccz
                 output += "0.0 "; //altitude ??? this should be here, but then i have one extra column
             }
-            Console.WriteLine("Parsed output: "+ output);
+            //Console.WriteLine("Parsed output: "+ output);
             return output;       
         
         }
 
         public Program()
         {
-            ConfigureDaq();
-            imu_names = new string[] {"a","b","c","d",
-                                      "e","f","g","h"  };  //lower body
+            ConfigureDaq(); /// THIS IS RUBBISH, 
+
+            imu_dict.Add(13, "TORAX");
+            imu_dict.Add(14, "HUMERUS");
+            imu_dict.Add(15, "RADIUS");
+            //imu_names = new string[] {"a","b","c","d",
+            //                          "e","f","g","h"  };  //lower body
             //imu_names = new string[] {"a","b","c","d",
             //                          "e","f","g","h"  }; //upper body
 
@@ -167,9 +194,11 @@ namespace Playground
 
         private void StartServer()
         {
-            Console.WriteLine("Will spit data as udp in 127.0.0.1, 8080");
+            string client_ip = "127.0.0.1";
+            int client_port = 8080;
+            Console.WriteLine("Will spit data as udp in {0}, {1}", client_ip, client_port.ToString());
             // now the third horriblest serverino:
-            c.Client("127.0.0.1", 8080);
+            c.Client(client_ip, client_port);
 
         }
 
@@ -209,14 +238,15 @@ namespace Playground
 
         private void Capture_DataAvailable(object sender, DataAvailableEventArgs e)
         {
-            int samplesPerChannel = e.ScanNumber; // what's this?
+            int samplesPerChannel = 1; // somewhere this is defined. sending 20 samples sounds interesting, but right now, i don't know how to deal with this
+            //int samplesPerChannel = e.ScanNumber; // what's this?
             Console.WriteLine("scan number ???" + e.ScanNumber);
             int channelsNumber = 16; // Number of output channels
             double[] values = new double[samplesPerChannel * channelsNumber]; // Change to add more sensors
             string output = "";
             for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber + 1) // This loops captures data from sensor # sampleNumber+1
             {
-                Console.WriteLine("samples number:"+ sampleNumber.ToString());
+                Console.WriteLine("samplenumber: "+ sampleNumber.ToString());
                 //Console.WriteLine("EMGSensor #" + 1 + ": " + e.Samples[0, sampleNumber]);
                 //Console.WriteLine("EMGSensor #" + 2 + ": " + e.Samples[1, sampleNumber]);
                 //Console.WriteLine("EMGSensor #" + 3 + ": " + e.Samples[2, sampleNumber]);
