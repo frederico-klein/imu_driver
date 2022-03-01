@@ -33,6 +33,97 @@ namespace Playground
         Dictionary<int, string> imu_dict =
                new Dictionary<int, string>();
 
+
+        public abstract class SIMU
+        {
+            public int ID;
+            public string Name;
+            public SIMU() {
+
+            }
+            public SIMU(int id, string name) {
+                ID = id;
+                Name = name;
+            }
+
+            abstract public string singleIMUParser(DataAvailableEventArgs e, int sampleNumber);
+
+            public SIMU referenceIMU;
+
+        }
+
+        public class RIMU : SIMU
+        {
+            public RIMU(int id, string name) : base(id, name)
+            {
+            }
+
+            public override string singleIMUParser(DataAvailableEventArgs e, int sampleNumber)
+            {
+                int i = ID;
+                string imu = Name;
+                string output = "";
+                Console.WriteLine("imu ({1}): {0}", imu, i);
+                float q0, q1, q2, q3;
+                q0 = e.ImuSamples[i, 0, sampleNumber];
+                q1 = e.ImuSamples[i, 1, sampleNumber];
+                q2 = e.ImuSamples[i, 2, sampleNumber];
+                q3 = e.ImuSamples[i, 3, sampleNumber];
+                Console.WriteLine(e.ImuSamples);
+                foreach (int j in e.ImuSamples)
+                {
+                    Console.Write("{0} ", j);
+                }
+                Console.WriteLine("quarternions: {0}, {1}, {2}, {3}", q0, q1, q2, q3);
+                output += e.ImuSamples[i, 0, sampleNumber].ToString() + " ";
+                output += e.ImuSamples[i, 1, sampleNumber].ToString() + " ";
+                output += e.ImuSamples[i, 2, sampleNumber].ToString() + " ";
+                output += e.ImuSamples[i, 3, sampleNumber].ToString() + " ";
+                output += e.AccelerometerSamples[i, 0, sampleNumber].ToString() + " ";
+                output += e.AccelerometerSamples[i, 1, sampleNumber].ToString() + " ";
+                output += e.AccelerometerSamples[i, 2, sampleNumber].ToString() + " ";
+                output += e.GyroscopeSamples[i, 0, sampleNumber].ToString() + " ";
+                output += e.GyroscopeSamples[i, 1, sampleNumber].ToString() + " ";
+                output += e.GyroscopeSamples[i, 2, sampleNumber].ToString() + " ";
+                output += e.MagnetometerSamples[i, 0, sampleNumber].ToString() + " ";
+                output += e.MagnetometerSamples[i, 1, sampleNumber].ToString() + " ";
+                output += e.MagnetometerSamples[i, 2, sampleNumber].ToString() + " ";
+                output += "0.0 "; //barometer
+                output += "0.0 "; //linAccx
+                output += "0.0 "; //linAccy
+                output += "0.0 "; //linAccz
+                output += "0.0 "; //altitude ??? this should be here, but then i have one extra column
+                return output;
+            }
+
+        }
+
+        public class FIMU : SIMU
+        {
+            public FIMU(int id, string name, SIMU refer = null) : base(id, name)
+            {
+                referenceIMU = refer;
+            }
+
+            public FIMU() {
+                referenceIMU = null;
+            }
+            public FIMU(SIMU refereNceIMU)
+            {
+                referenceIMU = refereNceIMU;
+            }
+            public override string singleIMUParser(DataAvailableEventArgs e, int sampleNumber)
+            {
+                if (referenceIMU == null)
+                    throw new ArgumentNullException("Fake IMU needs a preset reference before it can output a value");
+                return referenceIMU.singleIMUParser(e, sampleNumber);
+            }
+
+        }
+
+
+        List<SIMU> IMUs = new List<SIMU>();
+
         public DataAvailableEventArgs DistrDaq(string[] trow)
         {
             DataAvailableEventArgs e = new DataAvailableEventArgs();
@@ -97,6 +188,7 @@ namespace Playground
             }
             return e;
         }
+
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {
             TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
@@ -104,39 +196,11 @@ namespace Playground
             //for (int i = 0; i < imu_names.Length; i++)
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
             {
-                int i = ele1.Key;
+                //int i = ele1.Key;
+                //string imu = ele1.Value;
+                //output += singleIMUParser(i, imu, e, sampleNumber);
+                output += singleIMUParser(ele1.Key, ele1.Value, e, sampleNumber);
 
-                string imu = ele1.Value;
-                Console.WriteLine("imu ({1}): {0}", imu, i);
-                float q0, q1, q2, q3;
-                q0 = e.ImuSamples[i, 0, sampleNumber];
-                q1 = e.ImuSamples[i, 1, sampleNumber];
-                q2 = e.ImuSamples[i, 2, sampleNumber];
-                q3 = e.ImuSamples[i, 3, sampleNumber];
-                Console.WriteLine(e.ImuSamples);
-                foreach (int j in e.ImuSamples)
-                {
-                    Console.Write("{0} ", j);
-                }
-                Console.WriteLine("quarternions: {0}, {1}, {2}, {3}", q0,q1,q2,q3);
-                output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
-                output += e.ImuSamples[i, 1, sampleNumber].ToString() + " ";
-                output += e.ImuSamples[i, 2, sampleNumber].ToString() + " ";
-                output += e.ImuSamples[i, 3, sampleNumber].ToString() + " ";                
-                output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
-                output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
-                output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
-                output += e.GyroscopeSamples[i,0, sampleNumber].ToString() + " ";
-                output += e.GyroscopeSamples[i,1, sampleNumber].ToString() + " ";
-                output += e.GyroscopeSamples[i,2, sampleNumber].ToString() + " ";
-                output += e.MagnetometerSamples[i,0, sampleNumber].ToString() + " ";
-                output += e.MagnetometerSamples[i,1, sampleNumber].ToString() + " ";
-                output += e.MagnetometerSamples[i,2, sampleNumber].ToString() + " ";
-                output += "0.0 "; //barometer
-                output += "0.0 "; //linAccx
-                output += "0.0 "; //linAccy
-                output += "0.0 "; //linAccz
-                output += "0.0 "; //altitude ??? this should be here, but then i have one extra column
             }
             //Console.WriteLine("Parsed output: "+ output);
             return output;       
@@ -150,6 +214,14 @@ namespace Playground
             imu_dict.Add(13, "TORAX");
             imu_dict.Add(14, "HUMERUS");
             imu_dict.Add(15, "RADIUS");
+
+            IMUs.Add(new RIMU(13, "TORAX"));
+            IMUs.Add(new RIMU(14, "HUMERUS"));
+            IMUs.Add(new RIMU(15, "RADIUS"));
+            IMUs.Add(new FIMU(16, "ANTENNA")); // works, but we should specify the base that this fake IMU is copying
+            IMUs.Add(new FIMU(16, "ANTENNA"));
+
+
             //imu_names = new string[] {"a","b","c","d",
             //                          "e","f","g","h"  };  //lower body
             //imu_names = new string[] {"a","b","c","d",
@@ -233,6 +305,14 @@ namespace Playground
             Console.WriteLine("Configuring capture");
             daqSystem.ConfigureCapture(
                 new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData }
+                /*
+                RawData = 0,
+                Fused9xData_142Hz = 1,
+                Fused6xData_284Hz = 2,
+                Fused9xData_71Hz = 3,
+                Fused6xData_142Hz = 4,
+                Mixed6xData_142Hz = 5
+                */
             );
         }
 
