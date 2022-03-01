@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
+//using System.Windows.Forms.dll;
 using System.IO;
 using System.Linq;
 using Waveplus.DaqSys;
@@ -10,6 +12,7 @@ namespace Playground
 {
     class Program
     {
+        [STAThread]
         static void Main()
         {
             /*
@@ -20,6 +23,7 @@ namespace Playground
              * 4. [Server] Send data to socket as soon as it's received from sensors
              * 5. [Matlab] Read data from socket, GOTO 4
              */
+            Application.Run(new Form1());
 
             new Program();
 
@@ -114,10 +118,10 @@ namespace Playground
                 q2 = e.ImuSamples[i, 2, sampleNumber];
                 q3 = e.ImuSamples[i, 3, sampleNumber];
                 Console.WriteLine(e.ImuSamples);
-                foreach (int j in e.ImuSamples)
+                /*foreach (int j in e.ImuSamples)
                 {
                     Console.Write("{0} ", j);
-                }
+                }*/
                 Console.WriteLine("quarternions: {0}, {1}, {2}, {3}", q0,q1,q2,q3);
                 output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
                 output += e.ImuSamples[i, 1, sampleNumber].ToString() + " ";
@@ -229,17 +233,26 @@ namespace Playground
                     IMUsensorNumber
                 );
             }
+            var old_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData };
+            var new_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused6xData_142Hz };
+
+            /*
+                RawData = 0,
+                Fused9xData_142Hz = 1,
+                Fused6xData_284Hz = 2,
+                Fused9xData_71Hz = 3,
+                Fused6xData_142Hz = 4,
+                Mixed6xData_142Hz = 5
+            */
 
             Console.WriteLine("Configuring capture");
-            daqSystem.ConfigureCapture(
-                new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData }
-            );
+            daqSystem.ConfigureCapture(new_config);
         }
 
         private void Capture_DataAvailable(object sender, DataAvailableEventArgs e)
         {
-            int samplesPerChannel = 1; // somewhere this is defined. sending 20 samples sounds interesting, but right now, i don't know how to deal with this
-            //int samplesPerChannel = e.ScanNumber; // what's this?
+            //int samplesPerChannel = 1; // somewhere this is defined. sending 20 samples sounds interesting, but right now, i don't know how to deal with this
+            int samplesPerChannel = e.ScanNumber; // what's this?
             Console.WriteLine("scan number ???" + e.ScanNumber);
             int channelsNumber = 16; // Number of output channels
             double[] values = new double[samplesPerChannel * channelsNumber]; // Change to add more sensors
@@ -316,9 +329,10 @@ namespace Playground
                 //values[sampleNumber * 8 + 7] = e.Samples[7, sampleNumber];
 
                 //
-                output += eEeParser(e, sampleNumber);
+                eEeParser(e, sampleNumber);
 
             }
+            output += eEeParser(e, 1);
 
             //servidor numbero 3!
             c.Send(output);
