@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using Waveplus.DaqSys;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
@@ -24,14 +25,17 @@ namespace Playground
             new Program();
 
         }
-        bool FAKEDAQ = false;
+        bool FAKEDAQ = true;
         DaqSystem daqSystem;
+        DateTime starttime = DateTime.UtcNow;
 
         UDPSocket c = new UDPSocket();
         //string[] imu_names;
 
         Dictionary<int, string> imu_dict =
                new Dictionary<int, string>();
+
+        int numframes = 0;
 
         public DataAvailableEventArgs DistrDaq(string[] trow)
         {
@@ -44,6 +48,7 @@ namespace Playground
             string[] row = trow.Skip(1).ToArray();
             float time = float.Parse(trow[0]); /// not sure how to save it in e yet.
             //for (int i =0; i< imu_names.Length; i++)
+            int j = 0;
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
                 {
                 int i = ele1.Key;
@@ -59,7 +64,9 @@ namespace Playground
                 //barometer
                 //linAcc(x,y,z)
                 //altitude
-                int I = i * 18;
+                int I = j * 18;
+                Console.WriteLine("I: {0}, j: {1}",I.ToString(), j.ToString() );
+                j++;
                 e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
                 e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
                 e.ImuSamples[i, 2, 0] = float.Parse(row[I + 2]);
@@ -97,9 +104,28 @@ namespace Playground
             }
             return e;
         }
-        public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
+        public Quaternion convertQuaternion(Quaternion q, double angle, bool LEFTHANDEDSYSTEM = false)
         {
-            TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
+
+            //see https://stackoverflow.com/questions/28673777/convert-quaternion-from-right-handed-to-left-handed-coordinate-system
+            //and https://gamedev.stackexchange.com/questions/129204/switch-axes-and-handedness-of-a-quaternion
+            /*Quaternion Q1 = new Quaternion((float)Math.Cos(angle / 2) * q.X, 
+                                           (float)Math.Sin(angle / 2) * q.Y,
+                                           (float)Math.Sin(angle / 2) * q.Z,
+                                           (float)Math.Sin(angle / 2) * q.W);*/
+            Quaternion q0 = new Quaternion(0.5f, 0.5f, 0.5f, 0.5f); //this is the angle 120 around the vector 1,1,1; for this angle to have any meaning this is what needs to be done, but I won't do it now.
+            Quaternion Q1 = Quaternion.Concatenate(q,q0);
+            if (LEFTHANDEDSYSTEM)
+            {
+                Q1 = new Quaternion(Q1.X, -Q1.Y, -Q1.Z, -Q1.W);
+            }
+            return Q1;
+        }
+
+        public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
+        {            
+            TimeSpan t = DateTime.UtcNow - starttime;
+            //TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
             string output =  t.TotalSeconds.ToString() + " ";
             //for (int i = 0; i < imu_names.Length; i++)
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
@@ -113,16 +139,30 @@ namespace Playground
                 q1 = e.ImuSamples[i, 1, sampleNumber];
                 q2 = e.ImuSamples[i, 2, sampleNumber];
                 q3 = e.ImuSamples[i, 3, sampleNumber];
+                Quaternion Q = new Quaternion(q0, q1, q2, q3);
+                
                 Console.WriteLine(e.ImuSamples);
-                foreach (int j in e.ImuSamples)
-                {
-                    Console.Write("{0} ", j);
-                }
-                Console.WriteLine("quarternions: {0}, {1}, {2}, {3}", q0,q1,q2,q3);
-                output += e.ImuSamples[i, 0, sampleNumber].ToString()+" ";
-                output += e.ImuSamples[i, 1, sampleNumber].ToString() + " ";
-                output += e.ImuSamples[i, 2, sampleNumber].ToString() + " ";
-                output += e.ImuSamples[i, 3, sampleNumber].ToString() + " ";                
+                Console.WriteLine(Q);
+
+                //foreach (int j in e.ImuSamples)
+                //{
+                //    Console.Write("{0} ", j);
+                //}
+                //
+                Quaternion QQ = convertQuaternion(Q, 0.0);
+                Console.WriteLine(QQ);
+                float qq0, qq1, qq2, qq3;
+                qq0 = QQ.X;
+                qq1 = QQ.Y;
+                qq2 = QQ.Z;
+                qq3 = QQ.W;
+                ///this is wrong!
+                Console.WriteLine("quarternions             : {0}, {1}, {2}, {3}", q0,q1,q2,q3);
+                Console.WriteLine("quarternions converted   : {0}, {1}, {2}, {3}", qq0,qq1,qq2, qq3);
+                output += q0.ToString() + " ";
+                output += q1.ToString() + " ";
+                output += q2.ToString() + " ";
+                output += q3.ToString() + " ";                
                 output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
@@ -147,9 +187,9 @@ namespace Playground
         {
             ConfigureDaq(); /// THIS IS RUBBISH, 
 
-            imu_dict.Add(13, "TORAX");
-            imu_dict.Add(14, "HUMERUS");
-            imu_dict.Add(15, "RADIUS");
+            imu_dict.Add(11, "TORAX");
+            imu_dict.Add(12, "HUMERUS");
+            imu_dict.Add(13, "RADIUS");
             //imu_names = new string[] {"a","b","c","d",
             //                          "e","f","g","h"  };  //lower body
             //imu_names = new string[] {"a","b","c","d",
@@ -157,12 +197,21 @@ namespace Playground
 
             StartServer();
             
-            Console.WriteLine("Starting capture");
-            daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10
+
+
+            bool UPPER = true;
+            var lowbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv";
+            var uppbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\mobl2016_imu.csv";
+            string dasfile;
+            if (UPPER)
+                dasfile = uppbodyfile;
+            else
+                dasfile = lowbodyfile;
 
             if (FAKEDAQ)
             {
-                using (var reader = new StreamReader(@"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv"))
+                Console.WriteLine("Starting capture");
+                using (var reader = new StreamReader(dasfile))
                 {
                     DataAvailableEventArgs e = new DataAvailableEventArgs();
                     //float[,] datatable = new float[17 * 8, 32000];
@@ -178,18 +227,24 @@ namespace Playground
                         var line = reader.ReadLine();
                         Console.WriteLine("rowread:" + line);
                         var values = line.Split(',');
-                        
+
                         e = DistrDaq(values);
 
                         e.ScanNumber = 1;
                         Capture_DataAvailable(null, e);
 
-                        System.Threading.Thread.Sleep(10);
+                        System.Threading.Thread.Sleep(1);
                     }
                 }
             }
+            else
+            {
+                Console.WriteLine("Starting capture");
+                daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
+            }
             Console.WriteLine("Finished!");
-            Console.ReadKey();
+            c.Send("BYE!");
+               Console.ReadKey();
         }
 
         private void StartServer()
@@ -231,19 +286,20 @@ namespace Playground
             }
 
             Console.WriteLine("Configuring capture");
-            daqSystem.ConfigureCapture(
-                new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData }
-            );
+            var new_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused9xData_142Hz };
+            var old_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData };
+            daqSystem.ConfigureCapture(old_config);
+            //daqSystem.ConfigureCapture(new_config);
         }
 
         private void Capture_DataAvailable(object sender, DataAvailableEventArgs e)
         {
-            int samplesPerChannel = 1; // somewhere this is defined. sending 20 samples sounds interesting, but right now, i don't know how to deal with this
-            //int samplesPerChannel = e.ScanNumber; // what's this?
+            //int samplesPerChannel = 1; // somewhere this is defined. sending 20 samples sounds interesting, but right now, i don't know how to deal with this
+            int samplesPerChannel = e.ScanNumber; // what's this?
             Console.WriteLine("scan number ???" + e.ScanNumber);
-            int channelsNumber = 16; // Number of output channels
-            double[] values = new double[samplesPerChannel * channelsNumber]; // Change to add more sensors
-            string output = "";
+            //int channelsNumber = 16; // Number of output channels
+            //double[] values = new double[samplesPerChannel * channelsNumber]; // Change to add more sensors
+            //string output = "";
             for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber + 1) // This loops captures data from sensor # sampleNumber+1
             {
                 Console.WriteLine("samplenumber: "+ sampleNumber.ToString());
@@ -316,14 +372,24 @@ namespace Playground
                 //values[sampleNumber * 8 + 7] = e.Samples[7, sampleNumber];
 
                 //
-                output += eEeParser(e, sampleNumber);
+                //output += eEeParser(e, sampleNumber);
+                eEeParser(e, sampleNumber);
 
             }
+            numframes++;
 
             //servidor numbero 3!
-            c.Send(output);
-
-            //foreach (int value in values)
+            //c.Send(output);
+            Console.WriteLine("this goes to the socket:");
+            if (numframes > 0)
+            {
+                c.Send(eEeParser(e, 0));
+            }
+            else
+            {
+                Console.WriteLine("skipping initial frames!");
+            }
+                //foreach (int value in values)
             //    Console.Write("{0}  ", value);
             Console.WriteLine("Values has been sent");
 
