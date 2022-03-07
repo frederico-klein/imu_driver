@@ -16,7 +16,7 @@ namespace Playground
             new Program();
         }
 
-        bool FAKEDAQ = true;
+        bool FAKEDAQ = false;
         DaqSystem daqSystem;
         DateTime starttime = DateTime.UtcNow;
 
@@ -24,8 +24,6 @@ namespace Playground
 
         Dictionary<int, string> imu_dict =
                new Dictionary<int, string>();
-
-        int numframes = 0;
 
         public DataAvailableEventArgs DistrDaq(string[] trow)
         {
@@ -43,7 +41,7 @@ namespace Playground
                 {
                 int i = ele1.Key;
                 string imu = ele1.Value;
-                Console.WriteLine("Evaling imu( {0} ): {1}", i.ToString(), imu);
+                Console.WriteLine("FAKEDAQ: Evaling imu( {0} ): {1}", i.ToString(), imu);
                 // now there is a fixed sequence which i must follow
                 //q1,q2,q3,q4
                 //ax,ay,az
@@ -53,7 +51,7 @@ namespace Playground
                 //linAcc(x,y,z)
                 //altitude
                 int I = j * 18;
-                Console.WriteLine("I: {0}, j: {1}",I.ToString(), j.ToString() );
+                Console.WriteLine("FAKEDAQ: I: {0}, j: {1}",I.ToString(), j.ToString() );
                 j++;
                 e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
                 e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
@@ -72,39 +70,41 @@ namespace Playground
             return e;
         }
 
+        public string WriteQuarternion(float q0, float q1, float q2, float q3)
+        {
+            string outstr = "";
+            string formatstr = "{0:+0.0000000;-0.0000000} ";
+            outstr += string.Format(formatstr, q0);
+            outstr += string.Format(formatstr, q1);
+            outstr += string.Format(formatstr, q2);
+            outstr += string.Format(formatstr, q3);
+            return outstr;
+
+        }
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {            
             TimeSpan t = DateTime.UtcNow - starttime;
             string output =  t.TotalSeconds.ToString() + " ";
+            string consolestring = "\r";
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
             {
-                int i = ele1.Key;
+                int i = ele1.Key-1;
 
                 string imu = ele1.Value;
-                Console.WriteLine("imu ({1}): {0}", imu, i);
+                consolestring += string.Format("Imu ({1}): {0} ", imu, i+1);
                 float q0, q1, q2, q3;
                 q0 = e.ImuSamples[i, 0, sampleNumber];
                 q1 = e.ImuSamples[i, 1, sampleNumber];
                 q2 = e.ImuSamples[i, 2, sampleNumber];
                 q3 = e.ImuSamples[i, 3, sampleNumber];
-                Quaternion Q = new Quaternion(q0, q1, q2, q3);
-                
-                Console.WriteLine(e.ImuSamples);
-                Console.WriteLine(Q);
 
-                //foreach (int j in e.ImuSamples)
-                //{
-                //    Console.Write("{0} ", j);
-                //}
-                //
+                consolestring += string.Format("Q: {0:+0.0000;-0.0000}, {1:+0.0000;-0.0000}, {2:+0.0000;-0.0000}, {3:+0.0000;-0.0000}", q0,q1,q2,q3);
 
-                ///currently this is not correct:
-                Console.WriteLine("quarternions             : {0}, {1}, {2}, {3}", q0,q1,q2,q3);
-
-                output += q0.ToString() + " ";
+                /*output += q0.ToString() + " ";
                 output += q1.ToString() + " ";
                 output += q2.ToString() + " ";
-                output += q3.ToString() + " ";                
+                output += q3.ToString() + " ";                */
+                output += WriteQuarternion(q0,q1,q2,q3);
                 output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
@@ -119,7 +119,9 @@ namespace Playground
                 output += "0.0 "; //linAccy
                 output += "0.0 "; //linAccz
                 output += "0.0 "; //altitude 
+                consolestring += "||";
             }
+            Console.Write(consolestring);
             //Console.WriteLine("Parsed output: "+ output);
             return output;       
         
@@ -127,6 +129,7 @@ namespace Playground
 
         public Program()
         {
+            Console.SetWindowSize(200, 20);
             ConfigureDaq(); 
 
             imu_dict.Add(11, "TORAX");
@@ -159,9 +162,9 @@ namespace Playground
                     reader.ReadLine(); // labels
                     while (FAKEDAQ && !reader.EndOfStream)
                     {
-                        Console.WriteLine("LOOP");
+                        Console.WriteLine("FAKEDAQ: LOOP");
                         var line = reader.ReadLine();
-                        Console.WriteLine("rowread:" + line);
+                        //Console.WriteLine("FAKEDAQ: rowread:" + line);
                         var values = line.Split(',');
 
                         e = DistrDaq(values);
@@ -178,9 +181,11 @@ namespace Playground
                 Console.WriteLine("Starting capture");
                 daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
             }
-            Console.WriteLine("Finished!");
+            Console.WriteLine("Finished! press any key to send bye signal");
+            Console.ReadKey();
             c.Send("BYE!");
-               Console.ReadKey();
+            Console.WriteLine("Bye sent!");
+            Console.ReadKey();
         }
 
         private void StartServer()
@@ -222,7 +227,7 @@ namespace Playground
             }
 
             Console.WriteLine("Configuring capture");
-            var new_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused9xData_142Hz };
+            var new_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused6xData_142Hz };
             //var old_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData };
             //daqSystem.ConfigureCapture(old_config);
             daqSystem.ConfigureCapture(new_config);
@@ -231,19 +236,17 @@ namespace Playground
         private void Capture_DataAvailable(object sender, DataAvailableEventArgs e)
         {
             int samplesPerChannel = e.ScanNumber; // what's this?
-            Console.WriteLine("Scan number: " + e.ScanNumber);
+            //Console.WriteLine("Scan number: " + e.ScanNumber);
 
             for (int sampleNumber = 0; sampleNumber < samplesPerChannel; sampleNumber = sampleNumber + 1) // This loops captures data from sensor # sampleNumber+1
             {
-                Console.WriteLine("samplenumber: "+ sampleNumber.ToString());
-                
+                //Console.Write(" sampleNumber: "+ sampleNumber.ToString());
+                // this is only necessary if we want the most accurate possible IMU values, with the N*14 delayed sample that you can read 
                 //eEeParser(e, sampleNumber);
-                //send to server here? or below?
             }
-            numframes++;
-
+            //Console.WriteLine(".");
             c.Send(eEeParser(e, 0));
-            Console.WriteLine("Values has been sent");
+            //Console.WriteLine("Values has been sent");
 
         }
 

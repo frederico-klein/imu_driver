@@ -40,7 +40,7 @@ namespace Playground
             {
                 State so = (State)ar.AsyncState;
                 int bytes = _socket.EndSend(ar);
-                Console.WriteLine("SEND: {0}, {1}", bytes, text);
+                //Console.WriteLine("SEND: {0}, {1}", bytes, text);
             }, state);
         }
 
@@ -51,7 +51,7 @@ namespace Playground
                 State so = (State)ar.AsyncState;
                 int bytes = _socket.EndReceiveFrom(ar, ref epFrom);
                 _socket.BeginReceiveFrom(so.buffer, 0, bufSize, SocketFlags.None, ref epFrom, recv, so);
-                Console.WriteLine("RECV: {0}: {1}, {2}", epFrom.ToString(), bytes, Encoding.ASCII.GetString(so.buffer, 0, bytes));
+                //Console.WriteLine("RECV: {0}: {1}, {2}", epFrom.ToString(), bytes, Encoding.ASCII.GetString(so.buffer, 0, bytes));
             }, state);
         }
     }
