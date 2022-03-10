@@ -1,5 +1,7 @@
-﻿using System;
+﻿using CsvHelper;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -24,6 +26,10 @@ namespace Playground
 
         Dictionary<int, string> imu_dict =
                new Dictionary<int, string>();
+
+        StreamWriter textWriter;
+        
+        int numsamples = 0;
 
         public DataAvailableEventArgs DistrDaq(string[] trow)
         {
@@ -178,6 +184,24 @@ namespace Playground
             }
             else
             {
+                textWriter = new StreamWriter(@"D:\frekle\Documents\githbu\imu_driver\socket_publisher\myfile.csv");
+                //nope. too complicated.
+
+                //var writer = new CsvWriter(textWriter, CultureInfo.InvariantCulture);
+                //writer.Configuration.Delimiter = ",";
+                //writer.WriteHeader<>();
+                string myheader = "";
+                foreach (string imuS in imulist)
+                {
+                    foreach (string imucolumn in imutable)
+                    {
+                        myheader += imuS + imucolumn + ",";
+
+                    }
+
+                }
+                textWriter.WriteLine(myheader);
+
                 Console.WriteLine("Starting capture");
                 daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
             }
@@ -185,8 +209,16 @@ namespace Playground
             Console.ReadKey();
             c.Send("BYE!");
             Console.WriteLine("Bye sent!");
+            textWriter.Close();
             Console.ReadKey();
         }
+
+        string[] imutable = { "_q1",       "_q2",       "_q3",      "_q4",        "_ax",
+            "_ay",       "_az",       "_gx",      "_gy",        "_gz",
+            "_mx",       "_my",       "_mz",      "_barometer", "_linAcc_x",
+            "_linAcc_y", "_linAcc_z", "_altitude" };
+
+        string[] imulist = {"thorax","humerus","radius" };
 
         private void StartServer()
         {
@@ -245,7 +277,12 @@ namespace Playground
                 //eEeParser(e, sampleNumber);
             }
             //Console.WriteLine(".");
-            c.Send(eEeParser(e, 0));
+            numsamples++;
+            string imulinestr = eEeParser(e, 0);
+            if (!FAKEDAQ)
+                textWriter.WriteLine(imulinestr.Replace(' ', ','));
+            if ( numsamples> 200) // a bit more than a second at 142hz
+                c.Send(imulinestr);
             //Console.WriteLine("Values has been sent");
 
         }
