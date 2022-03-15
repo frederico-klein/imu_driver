@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+//using System.Numerics.Quaternion;
 using Waveplus.DaqSys;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
@@ -17,7 +18,7 @@ namespace Playground
         {
             new Program();
         }
-
+        bool SHOWEULERANGLES = true;
         bool FAKEDAQ = false;
         DaqSystem daqSystem;
         DateTime starttime = DateTime.UtcNow;
@@ -87,6 +88,52 @@ namespace Playground
             return outstr;
 
         }
+
+        public struct EulerAngles { 
+        
+            public double roll, pitch, yaw;
+
+        };
+
+        //from wikipedia:
+        //https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+
+
+        public double CopySign(double x, double y)
+        { 
+            double sign_of_y = y/Math.Abs(y);
+            return Math.Abs(x) * sign_of_y;
+        
+        }
+
+
+
+        public EulerAngles ToEulerAngles(double w, double x, double y, double z)
+        {
+            EulerAngles angles;
+
+            // roll (x-axis rotation)
+            double sinr_cosp = 2 * (w * x + y * z);
+            double cosr_cosp = 1 - 2 * (x * x + y * y);
+            angles.roll = Math.Atan2(sinr_cosp, cosr_cosp);
+
+            // pitch (y-axis rotation)
+            double sinp = 2 * (w * y - z * x);
+            if (Math.Abs(sinp) >= 1)
+                //angles.pitch = Math.CopySign(Math.PI / 2, sinp); // use 90 degrees if out of range //doesnt exist, so i need to create it
+                angles.pitch = CopySign(Math.PI / 2, sinp); // use 90 degrees if out of range
+            else
+                angles.pitch = Math.Asin(sinp);
+
+            // yaw (z-axis rotation)
+            double siny_cosp = 2 * (w * z + x * y);
+            double cosy_cosp = 1 - 2 * (y * y + z * z);
+            angles.yaw = Math.Atan2(siny_cosp, cosy_cosp);
+
+            return angles;
+        }
+
+
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {            
             TimeSpan t = DateTime.UtcNow - starttime;
@@ -99,13 +146,86 @@ namespace Playground
                 string imu = ele1.Value;
                 consolestring += string.Format("Imu ({1}): {0} ", imu, i+1);
                 float q0, q1, q2, q3;
+
+                //original
+                
+                /*q0 = e.ImuSamples[i, 0, sampleNumber];
+                q1 = e.ImuSamples[i, 1, sampleNumber];
+                q2 = e.ImuSamples[i, 2, sampleNumber];
+                q3 = e.ImuSamples[i, 3, sampleNumber];
+                */
+
                 q0 = e.ImuSamples[i, 0, sampleNumber];
                 q1 = e.ImuSamples[i, 1, sampleNumber];
                 q2 = e.ImuSamples[i, 2, sampleNumber];
                 q3 = e.ImuSamples[i, 3, sampleNumber];
 
-                consolestring += string.Format("Q: {0:+0.0000;-0.0000}, {1:+0.0000;-0.0000}, {2:+0.0000;-0.0000}, {3:+0.0000;-0.0000}", q0,q1,q2,q3);
 
+                //Quaternion q = new Quaternion(q0, q1, q2, q3);
+                //Quaternion qr = new Quaternion(0.707f, 0, 0, 0.707f);
+                //Quaternion qr = new Quaternion(0.5f, 0.5f, 0.5f, 0.5f);
+                //Quaternion qr = new Quaternion(1, 0, 0, 0);
+                //Quaternion qr = new Quaternion(1, 0, 0, 0);
+
+                //qr = System.Numerics.Quaternion.Concatenate(q, qr);
+                //qr = System.Numerics.Quaternion.Concatenate(q, qr);
+                //qr = System.Numerics.Quaternion.Concatenate(qr, q);
+
+                //q0 = qr.W;
+                //q1 = qr.X;
+                //q2 = qr.Y;
+                //q3 = qr.Z;
+
+                //maybe it is the MFusion version:
+                /*
+                q0 = e.ImuSamples[i, 0, sampleNumber];
+                q1 = e.ImuSamples[i, 2, sampleNumber];
+                q2 = -e.ImuSamples[i, 1, sampleNumber];
+                q3 = e.ImuSamples[i, 3, sampleNumber];
+                */
+
+                //maybe it is the MFusion version:
+                /*
+                q0 = e.ImuSamples[i, 0, sampleNumber];
+                q1 = e.ImuSamples[i, 1, sampleNumber];
+                q2 = e.ImuSamples[i, 2, sampleNumber];
+                q3 = e.ImuSamples[i, 3, sampleNumber];
+                
+                */
+                //maybe it is something else:
+
+                /*
+                float wl, xl, yl, zl;
+                wl = e.ImuSamples[i, 0, sampleNumber];
+                xl = e.ImuSamples[i, 1, sampleNumber];
+                yl = e.ImuSamples[i, 2, sampleNumber];
+                zl = e.ImuSamples[i, 3, sampleNumber];
+
+                q0 = 0.5f * (wl - zl - xl - yl);
+                q1 = 0.5f * (wl - zl + xl + yl);
+                q2 = 0.5f * (yl - xl + wl + zl);
+                q3 = 0.5f * (xl - yl + wl + zl);
+                */
+
+                //not this either
+                /*
+                q0 = e.ImuSamples[i, 0, sampleNumber];
+                q1 = -e.ImuSamples[i, 2, sampleNumber];
+                q2 = e.ImuSamples[i, 1, sampleNumber];
+                q3 = e.ImuSamples[i, 3, sampleNumber];
+                */
+
+
+                if (SHOWEULERANGLES)
+                {
+                    EulerAngles ang = ToEulerAngles((double)q0, (double)q1, (double)q2, (double)q3);
+                    consolestring += string.Format("EULER: {0:+00.0000;-00.0000}, {1:+00.0000;-00.0000}, {2:+00.0000;-00.0000}", ang.roll*180/Math.PI, ang.pitch * 180 / Math.PI, ang.yaw * 180 / Math.PI);
+
+                }
+                else
+                {
+                    consolestring += string.Format("Q: {0:+0.0000;-0.0000}, {1:+0.0000;-0.0000}, {2:+0.0000;-0.0000}, {3:+0.0000;-0.0000}", q0, q1, q2, q3);
+                }
                 /*output += q0.ToString() + " ";
                 output += q1.ToString() + " ";
                 output += q2.ToString() + " ";
