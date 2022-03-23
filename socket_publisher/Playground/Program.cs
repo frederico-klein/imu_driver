@@ -47,7 +47,7 @@ namespace Playground
                 {
                 int i = ele1.Key;
                 string imu = ele1.Value;
-                Console.WriteLine("FAKEDAQ: Evaling imu( {0} ): {1}", i.ToString(), imu);
+                //Console.WriteLine("FAKEDAQ: Evaling imu( {0} ): {1}", i.ToString(), imu);
                 // now there is a fixed sequence which i must follow
                 //q1,q2,q3,q4
                 //ax,ay,az
@@ -57,7 +57,7 @@ namespace Playground
                 //linAcc(x,y,z)
                 //altitude
                 int I = j * 18;
-                Console.WriteLine("FAKEDAQ: I: {0}, j: {1}",I.ToString(), j.ToString() );
+                //Console.WriteLine("FAKEDAQ: I: {0}, j: {1}",I.ToString(), j.ToString() );
                 j++;
                 e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
                 e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
@@ -145,10 +145,14 @@ namespace Playground
             StartServer();
    
             bool UPPER = true;
+            bool UPPER2 = true;
             var lowbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv";
             var uppbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\mobl2016_imu.csv";
+            var up2bodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\myfile.csv";
             string dasfile;
-            if (UPPER)
+            if (UPPER2)
+                dasfile = up2bodyfile;
+            else if (UPPER)
                 dasfile = uppbodyfile;
             else
                 dasfile = lowbodyfile;
@@ -168,7 +172,7 @@ namespace Playground
                     reader.ReadLine(); // labels
                     while (FAKEDAQ && !reader.EndOfStream)
                     {
-                        Console.WriteLine("FAKEDAQ: LOOP");
+                        // Console.WriteLine("FAKEDAQ: LOOP");
                         var line = reader.ReadLine();
                         //Console.WriteLine("FAKEDAQ: rowread:" + line);
                         var values = line.Split(',');
@@ -178,7 +182,7 @@ namespace Playground
                         e.ScanNumber = 1;
                         Capture_DataAvailable(null, e);
 
-                        System.Threading.Thread.Sleep(1);
+                        System.Threading.Thread.Sleep(500);
                     }
                 }
             }
@@ -209,7 +213,8 @@ namespace Playground
             Console.ReadKey();
             c.Send("BYE!");
             Console.WriteLine("Bye sent!");
-            textWriter.Close();
+            if (!FAKEDAQ)
+                textWriter.Close();
             Console.ReadKey();
         }
 
@@ -281,7 +286,7 @@ namespace Playground
             string imulinestr = eEeParser(e, 0);
             if (!FAKEDAQ)
                 textWriter.WriteLine(imulinestr.Replace(' ', ','));
-            if ( numsamples> 200) // a bit more than a second at 142hz
+            if ( numsamples> 0) // a bit more than a second at 142hz
                 c.Send(imulinestr);
             //Console.WriteLine("Values has been sent");
 
