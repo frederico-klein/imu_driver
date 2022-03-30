@@ -13,12 +13,78 @@ namespace Playground
 {
     class Program
     {
-        static void Main()
+        bool FAKEDAQ;
+        //string dasfile;
+        string outfile;
+
+        static int Main(string[] args)
         {
-            new Program();
+            // Display the number of command line arguments.
+            Console.WriteLine(args.Length);
+
+            string csvoutputfilename = "myfile.csv";
+            string ip = "127.0.0.1";
+            int port = 8080;
+            bool FAKÉ = false;
+            string csvinputfilename = "";
+
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Assuming I'm connecting to DAQ.");
+                new Program(false, "", csvoutputfilename, ip, port);
+                return 0;
+            }
+            //var command = args[0];
+
+            foreach (var command in args)
+
+                switch (command)
+                {
+                    case "--help":
+                        PrintHelp();
+                        return 0;
+                        //break;
+                    case string s when s.StartsWith("--fake"):
+                        //bool UPPER = true;
+                        //var lowbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv";
+                        //var uppbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\mobl2016_imu.csv";
+                        //if (UPPER)
+                        //   dasfile = uppbodyfile;
+                        //else
+                        //    dasfile = lowbodyfile;
+                        csvinputfilename = s.Substring(s.IndexOf("--fake=")+7); 
+                        FAKÉ = true;
+                        //new Program(true, myarg, csvoutputfilename, ip, port);
+                        //new Program(true, args[2], csvoutputfilename);
+                        //dasfile = args[2];
+                        //Commit(args[2]);
+                        break;
+                    case string s when s.StartsWith("--ip"):
+                        ip = s.Substring(s.IndexOf("--ip=") + 5);
+                        break;
+                    case string s when s.StartsWith("--port"):
+                        port = Int32.Parse(s.Substring(s.IndexOf("--port=") + 7));
+                        break;
+                    default:
+                        //new Program(false,);
+                        Console.WriteLine("Invalid command");
+                        return -1;
+                        //break;
+                }
+            new Program(FAKÉ, csvinputfilename, csvoutputfilename, ip, port);
+
+            return 0;
         }
 
-        bool FAKEDAQ = false;
+        static void PrintHelp()
+        {
+            Console.WriteLine("Usage: ");
+            Console.WriteLine(" Playground.exe fake -f c:/mypath/somefile.csv ");
+            Console.WriteLine(" or ");
+            Console.WriteLine(" Playground.exe ");
+
+        }
+
         DaqSystem daqSystem;
         DateTime starttime = DateTime.UtcNow;
 
@@ -27,7 +93,7 @@ namespace Playground
         Dictionary<int, string> imu_dict =
                new Dictionary<int, string>();
 
-        StreamWriter textWriter;
+        //StreamWriter textWriter;
         
         int numsamples = 0;
 
@@ -133,8 +199,9 @@ namespace Playground
         
         }
 
-        public Program()
+        public Program(bool FAKEDAQin, string dasfile, string csvoutputfilename, string ip, int port)
         {
+            FAKEDAQ = FAKEDAQin;
             Console.SetWindowSize(200, 20);
             ConfigureDaq(); 
 
@@ -142,17 +209,8 @@ namespace Playground
             imu_dict.Add(12, "HUMERUS");
             imu_dict.Add(13, "RADIUS");
 
-            StartServer();
+            StartServer(ip, port);
    
-            bool UPPER = true;
-            var lowbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv";
-            var uppbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\mobl2016_imu.csv";
-            string dasfile;
-            if (UPPER)
-                dasfile = uppbodyfile;
-            else
-                dasfile = lowbodyfile;
-
             if (FAKEDAQ)
             {
                 Console.WriteLine("Starting capture");
@@ -184,24 +242,6 @@ namespace Playground
             }
             else
             {
-                textWriter = new StreamWriter(@"D:\frekle\Documents\githbu\imu_driver\socket_publisher\myfile.csv");
-                //nope. too complicated.
-
-                //var writer = new CsvWriter(textWriter, CultureInfo.InvariantCulture);
-                //writer.Configuration.Delimiter = ",";
-                //writer.WriteHeader<>();
-                string myheader = "";
-                foreach (string imuS in imulist)
-                {
-                    foreach (string imucolumn in imutable)
-                    {
-                        myheader += imuS + imucolumn + ",";
-
-                    }
-
-                }
-                textWriter.WriteLine(myheader);
-
                 Console.WriteLine("Starting capture");
                 daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
             }
@@ -209,8 +249,33 @@ namespace Playground
             Console.ReadKey();
             c.Send("BYE!");
             Console.WriteLine("Bye sent!");
+            StreamWriter textWriter = CreateCSV(csvoutputfilename);
+            
             textWriter.Close();
             Console.ReadKey();
+        }
+
+        StreamWriter CreateCSV(string file)
+        {
+            StreamWriter textWriter = new StreamWriter(file);
+            //textWriter = new StreamWriter(@"D:\frekle\Documents\githbu\imu_driver\socket_publisher\myfile.csv");
+            //nope. too complicated.
+
+            //var writer = new CsvWriter(textWriter, CultureInfo.InvariantCulture);
+            //writer.Configuration.Delimiter = ",";
+            //writer.WriteHeader<>();
+            string myheader = "";
+            foreach (string imuS in imulist)
+            {
+                foreach (string imucolumn in imutable)
+                {
+                    myheader += imuS + imucolumn + ",";
+
+                }
+
+            }
+            textWriter.WriteLine(myheader);
+            return textWriter;
         }
 
         string[] imutable = { "_q1",       "_q2",       "_q3",      "_q4",        "_ax",
@@ -220,13 +285,14 @@ namespace Playground
 
         string[] imulist = {"thorax","humerus","radius" };
 
-        private void StartServer()
+        private void StartServer(string ip, int port)
         {
-            string client_ip = "127.0.0.1";
-            int client_port = 8080;
-            Console.WriteLine("Will spit data as udp in {0}, {1}", client_ip, client_port.ToString());
+            //string client_ip = "127.0.0.1";
+            //int client_port = 8080;
+            Console.WriteLine("Will spit data as udp in {0}, {1}", ip, port.ToString());
+            //       Console.WriteLine("Will spit data as udp in {0}, {1}", client_ip, client_port.ToString());
             // creates udp server
-            c.Client(client_ip, client_port);
+            c.Client(ip, port);
 
         }
 
@@ -280,7 +346,8 @@ namespace Playground
             numsamples++;
             string imulinestr = eEeParser(e, 0);
             if (!FAKEDAQ)
-                textWriter.WriteLine(imulinestr.Replace(' ', ','));
+                //textWriter.WriteLine(imulinestr.Replace(' ', ','));
+                outfile+= imulinestr.Replace(' ', ',');
             if ( numsamples> 200) // a bit more than a second at 142hz
                 c.Send(imulinestr);
             //Console.WriteLine("Values has been sent");
