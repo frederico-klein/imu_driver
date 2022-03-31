@@ -228,3 +228,6 @@ project.lock.json
 #
 slprj/
 
+#compiled python thing
+__pycache__
+
