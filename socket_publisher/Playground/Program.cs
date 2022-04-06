@@ -14,7 +14,7 @@ namespace Playground
 {
     class Program
     {
-        bool FAKEDAQ;
+        //bool FAKEDAQ;
         //string dasfile;
         string outfile;
 
@@ -109,13 +109,15 @@ namespace Playground
 
         public DataAvailableEventArgs DistrDaq(string[] trow, Dictionary<int, string> imu_dict)
         {
+            int RANGE = 32;
+            //int RANGE = 32000;
             DataAvailableEventArgs e = new DataAvailableEventArgs
             {
-                Samples = new float[32, 32000],
-                ImuSamples = new float[32, 4, 32000],
-                AccelerometerSamples = new float[32, 3, 32000],
-                GyroscopeSamples = new float[32, 3, 32000],
-                MagnetometerSamples = new float[32, 3, 32000]
+                Samples = new float[32, 32],
+                ImuSamples = new float[32, 4, 32],
+                AccelerometerSamples = new float[32, 3, 32],
+                GyroscopeSamples = new float[32, 3, 32],
+                MagnetometerSamples = new float[32, 3, 32]
             };
             string[] row = trow.Skip(1).ToArray();
             float time = float.Parse(trow[0]); 
@@ -123,9 +125,9 @@ namespace Playground
             int j = 0;
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
                 {
-                int i = ele1.Key;
+                int i = ele1.Key-1; // Because there is no IMU 0
                 string imu = ele1.Value;
-                Console.WriteLine("FAKEDAQ: Evaling imu( {0} ): {1}", i.ToString(), imu);
+                //Console.WriteLine("FAKEDAQ: Evaling imu( {0} ): {1}", i.ToString(), imu);
                 // now there is a fixed sequence which i must follow
                 //q1,q2,q3,q4
                 //ax,ay,az
@@ -135,7 +137,7 @@ namespace Playground
                 //linAcc(x,y,z)
                 //altitude
                 int I = j * 18;
-                Console.WriteLine("FAKEDAQ: I: {0}, j: {1}",I.ToString(), j.ToString() );
+                //Console.WriteLine("FAKEDAQ: I: {0}, j: {1}",I.ToString(), j.ToString() );
                 j++;
                 e.ImuSamples[i, 0, 0] = float.Parse(row[I + 0]);
                 e.ImuSamples[i, 1, 0] = float.Parse(row[I + 1]);
@@ -154,10 +156,7 @@ namespace Playground
             return e;
         }
 
-        public string WriteQuaternion(Quaternion q)
-        {
-            return string.Format("{0:+0.0000;-0.0000} {1:+0.0000;-0.0000} {2:+0.0000;-0.0000} {3:+0.0000;-0.0000}", q.W, q.X, q.Y, q.Z);
-        }
+
 
         public Quaternion GetQuaternion(DataAvailableEventArgs e, int sampleNumber, int imuNumber)
         {
@@ -202,16 +201,36 @@ namespace Playground
             return vec;
         }
 
-        public string WriteVector(Vector3 vec)
+        public string WriteVector(Vector3 vec, int precision = 5)
         {
-            return string.Format("{0:+0.0000;-0.0000} {1:+0.0000;-0.0000} {2:+0.0000;-0.0000} ", vec.X, vec.Y, vec.Z);
+            //return string.Format("{0:+0.0000;-0.0000} {1:+0.0000;-0.0000} {2:+0.0000;-0.0000} ", vec.X, vec.Y, vec.Z);
+            string format_string = BuildFormatString(0, precision) +
+                   BuildFormatString(1, precision) +
+                   BuildFormatString(2, precision);
+            return string.Format(format_string, vec.X, vec.Y, vec.Z);
+        }
+
+        public string WriteQuaternion(Quaternion q, int precision=5)
+        {
+            string format_string = BuildFormatString(0, precision) + 
+                BuildFormatString(1, precision) + 
+                BuildFormatString(2, precision) + 
+                BuildFormatString(3, precision);
+
+            return string.Format(format_string, q.W, q.X, q.Y, q.Z);
+        }
+
+        public string BuildFormatString(int n, int precision)
+        {
+            string pre = new string('0', precision);
+            return "{" + n.ToString() + ":+0." + pre + ";-0." + pre + "} "; 
         }
 
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber, Dictionary<int, string> imu_dict)
         {            
             TimeSpan t = DateTime.UtcNow - starttime;
             string output =  string.Format("{0:0.0000000;-0.0000000} ", t.TotalSeconds);
-            string consolestring = "\r"+output+":";
+            string consolestring = "\r"+output+"||";
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
             {
                 int i = ele1.Key-1;
@@ -244,11 +263,11 @@ namespace Playground
         
         }
 
-        public Program(bool FAKEDAQin, string dasfile, string csvoutputfilename, string ip, int port, Dictionary<int, string> imu_dict, int period)
+        public Program(bool FAKEDAQ, string dasfile, string csvoutputfilename, string ip, int port, Dictionary<int, string> imu_dict, int period)
         {
-            FAKEDAQ = FAKEDAQin;
+            //FAKEDAQ = FAKEDAQin;
             Console.SetWindowSize(200, 20);
-            ConfigureDaq(imu_dict);
+            ConfigureDaq(imu_dict,FAKEDAQ);
 
             StartServer(ip, port);
    
@@ -267,7 +286,7 @@ namespace Playground
                     reader.ReadLine(); // labels
                     while (FAKEDAQ && !reader.EndOfStream)
                     {
-                        Console.WriteLine("FAKEDAQ: LOOP");
+                        Console.Write("<<< FAKEDAQ >>>");
                         var line = reader.ReadLine();
                         //Console.WriteLine("FAKEDAQ: rowread:" + line);
                         var values = line.Split(',');
@@ -275,7 +294,7 @@ namespace Playground
                         e = DistrDaq(values, imu_dict);
 
                         e.ScanNumber = 1;
-                        Capture_DataAvailable(null, e, imu_dict);
+                        Capture_DataAvailable(null, e, imu_dict,FAKEDAQ);
 
                         System.Threading.Thread.Sleep(period);
                     }
@@ -355,12 +374,12 @@ namespace Playground
 
         }
 
-        private void ConfigureDaq(Dictionary<int, string> imu_dict)
+        private void ConfigureDaq(Dictionary<int, string> imu_dict, bool FAKEDAQ)
         {
             // Create daqSystem object and assign the event handlers
             daqSystem = new DaqSystem();
             daqSystem.StateChanged += Device_StateChanged;
-            void func(object x, DataAvailableEventArgs y) => Capture_DataAvailable(x, y, imu_dict);
+            void func(object x, DataAvailableEventArgs y) => Capture_DataAvailable(x, y, imu_dict, FAKEDAQ);
             //daqSystem.DataAvailable += Capture_DataAvailable;
             daqSystem.DataAvailable += func;
 
@@ -392,7 +411,7 @@ namespace Playground
             daqSystem.ConfigureCapture(new_config);
         }
 
-        private void Capture_DataAvailable(object sender, DataAvailableEventArgs e, Dictionary<int, string> imu_dict)
+        private void Capture_DataAvailable(object sender, DataAvailableEventArgs e, Dictionary<int, string> imu_dict, bool FAKEDAQ)
         {
             int samplesPerChannel = e.ScanNumber; // what's this?
             //Console.WriteLine("Scan number: " + e.ScanNumber);
