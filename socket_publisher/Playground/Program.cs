@@ -110,14 +110,14 @@ namespace Playground
         public DataAvailableEventArgs DistrDaq(string[] trow, Dictionary<int, string> imu_dict)
         {
             int RANGE = 32;
-            //int RANGE = 32000;
+            int RANGE_EMG = 32000;
             DataAvailableEventArgs e = new DataAvailableEventArgs
             {
-                Samples = new float[32, 32],
-                ImuSamples = new float[32, 4, 32],
-                AccelerometerSamples = new float[32, 3, 32],
-                GyroscopeSamples = new float[32, 3, 32],
-                MagnetometerSamples = new float[32, 3, 32]
+                Samples = new float[32, RANGE_EMG],
+                ImuSamples = new float[32, 4, RANGE],
+                AccelerometerSamples = new float[32, 3, RANGE],
+                GyroscopeSamples = new float[32, 3, RANGE],
+                MagnetometerSamples = new float[32, 3, RANGE]
             };
             string[] row = trow.Skip(1).ToArray();
             float time = float.Parse(trow[0]); 
