@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
-using System.Globalization;
 using Waveplus.DaqSys;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
@@ -95,7 +94,7 @@ namespace Playground
         }
 
         DaqSystem daqSystem;
-        DateTime starttime = DateTime.UtcNow;
+        readonly DateTime starttime = DateTime.UtcNow;
 
         UDPSocket c = new UDPSocket();
 
@@ -108,12 +107,14 @@ namespace Playground
 
         public DataAvailableEventArgs DistrDaq(string[] trow)
         {
-            DataAvailableEventArgs e = new DataAvailableEventArgs();
-            e.Samples = new float[32, 32000];
-            e.ImuSamples = new float[32, 4, 32000];
-            e.AccelerometerSamples = new float[32, 3, 32000];
-            e.GyroscopeSamples = new float[32, 3, 32000];
-            e.MagnetometerSamples = new float[32, 3, 32000];
+            DataAvailableEventArgs e = new DataAvailableEventArgs
+            {
+                Samples = new float[32, 32000],
+                ImuSamples = new float[32, 4, 32000],
+                AccelerometerSamples = new float[32, 3, 32000],
+                GyroscopeSamples = new float[32, 3, 32000],
+                MagnetometerSamples = new float[32, 3, 32000]
+            };
             string[] row = trow.Skip(1).ToArray();
             float time = float.Parse(trow[0]); 
  
@@ -162,6 +163,60 @@ namespace Playground
             return outstr;
 
         }
+
+        public string WriteQuaternion(Quaternion q)
+        {
+            return string.Format("{0:+0.0000;-0.0000} {1:+0.0000;-0.0000} {2:+0.0000;-0.0000} {3:+0.0000;-0.0000}", q.W, q.X, q.Y, q.Z);
+        }
+
+        public Quaternion GetQuaternion(DataAvailableEventArgs e, int sampleNumber, int imuNumber)
+        {
+            Quaternion q = new Quaternion
+            {
+                W = e.ImuSamples[imuNumber, 0, sampleNumber],
+                X = e.ImuSamples[imuNumber, 1, sampleNumber],
+                Y = e.ImuSamples[imuNumber, 2, sampleNumber],
+                Z = e.ImuSamples[imuNumber, 3, sampleNumber]
+            };
+            return q;
+        }
+
+        public Vector3 GetGyro(DataAvailableEventArgs e, int sampleNumber, int imuNumber)
+        {
+            Vector3 vec = new Vector3
+            {
+                X = e.GyroscopeSamples[imuNumber, 0, sampleNumber],
+                Y = e.GyroscopeSamples[imuNumber, 1, sampleNumber],
+                Z = e.GyroscopeSamples[imuNumber, 2, sampleNumber]
+            };
+            return vec;
+        }
+        public Vector3 GetAccelerometer(DataAvailableEventArgs e, int sampleNumber, int imuNumber)
+        {
+            Vector3 vec = new Vector3
+            {
+                X = e.AccelerometerSamples[imuNumber, 0, sampleNumber],
+                Y = e.AccelerometerSamples[imuNumber, 1, sampleNumber],
+                Z = e.AccelerometerSamples[imuNumber, 2, sampleNumber]
+            };
+            return vec;
+        }
+        public Vector3 GetMagnetometer(DataAvailableEventArgs e, int sampleNumber, int imuNumber)
+        {
+            Vector3 vec = new Vector3
+            {
+                X = e.MagnetometerSamples[imuNumber, 0, sampleNumber],
+                Y = e.MagnetometerSamples[imuNumber, 1, sampleNumber],
+                Z = e.MagnetometerSamples[imuNumber, 2, sampleNumber]
+            };
+            return vec;
+        }
+
+        public string WriteVector(Vector3 vec)
+        {
+            return string.Format("{0:+0.0000;-0.0000} {1:+0.0000;-0.0000} {2:+0.0000;-0.0000} ", vec.X, vec.Y, vec.Z);
+        }
+
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {            
             TimeSpan t = DateTime.UtcNow - starttime;
@@ -173,19 +228,29 @@ namespace Playground
 
                 string imu = ele1.Value;
                 consolestring += string.Format("Imu ({1}): {0} ", imu, i+1);
+                /*
                 float q0, q1, q2, q3;
                 q0 = e.ImuSamples[i, 0, sampleNumber];
                 q1 = e.ImuSamples[i, 1, sampleNumber];
                 q2 = e.ImuSamples[i, 2, sampleNumber];
                 q3 = e.ImuSamples[i, 3, sampleNumber];
-
+                
                 consolestring += string.Format("Q: {0:+0.0000;-0.0000}, {1:+0.0000;-0.0000}, {2:+0.0000;-0.0000}, {3:+0.0000;-0.0000}", q0,q1,q2,q3);
 
-                /*output += q0.ToString() + " ";
-                output += q1.ToString() + " ";
-                output += q2.ToString() + " ";
-                output += q3.ToString() + " ";                */
-                output += WriteQuarternion(q0,q1,q2,q3);
+                //output += q0.ToString() + " ";
+                //output += q1.ToString() + " ";
+                //output += q2.ToString() + " ";
+                //output += q3.ToString() + " ";                
+                output += WriteQuarternion(q0, q1, q2, q3);
+
+                */
+
+                Quaternion q = GetQuaternion(e,sampleNumber,i);
+
+                string qs = WriteQuaternion(q);
+                consolestring += qs;
+                output += qs;
+                /*
                 output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
                 output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
@@ -195,10 +260,22 @@ namespace Playground
                 output += e.MagnetometerSamples[i,0, sampleNumber].ToString() + " ";
                 output += e.MagnetometerSamples[i,1, sampleNumber].ToString() + " ";
                 output += e.MagnetometerSamples[i,2, sampleNumber].ToString() + " ";
+                */
+                Vector3 gyro = GetGyro(e, sampleNumber, i);
+                Vector3 acc = GetAccelerometer(e, sampleNumber, i);
+                Vector3 mag = GetMagnetometer(e, sampleNumber, i);
+                Vector3 linAcc = new Vector3(0, 0, 0);
+
+                output += WriteVector(gyro);
+                output += WriteVector(acc);
+                output += WriteVector(mag);
+
                 output += "0.0 "; //barometer
-                output += "0.0 "; //linAccx
-                output += "0.0 "; //linAccy
-                output += "0.0 "; //linAccz
+                //output += "0.0 "; //linAccx
+                //output += "0.0 "; //linAccy
+                //output += "0.0 "; //linAccz
+                output += WriteVector(linAcc);
+
                 output += "0.0 "; //altitude 
                 consolestring += "||";
             }
