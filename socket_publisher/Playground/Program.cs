@@ -18,6 +18,22 @@ namespace Playground
         //string dasfile;
         string outfile;
 
+        DaqSystem daqSystem;
+        readonly DateTime starttime = DateTime.UtcNow;
+
+        readonly string[] imutable = { "_q1",       "_q2",       "_q3",      "_q4",        "_ax",
+            "_ay",       "_az",       "_gx",      "_gy",        "_gz",
+            "_mx",       "_my",       "_mz",      "_barometer", "_linAcc_x",
+            "_linAcc_y", "_linAcc_z", "_altitude" };
+
+        UDPSocket c = new UDPSocket();
+
+        //Dictionary<int, string> imu_dict = new Dictionary<int, string>();
+
+        //StreamWriter textWriter;
+
+        int numsamples = 0;
+        
         static int Main(string[] args)
         {
             CultureInfo ci = new CultureInfo("en-UK");
@@ -32,11 +48,19 @@ namespace Playground
             int port = 8080;
             bool FAKÉ = false;
             string csvinputfilename = "";
+            int period = 10; // in milliseconds
+
+            Dictionary<int, string> imu_dict = new Dictionary<int, string>
+            {
+                { 11, "TORAX" },
+                { 12, "HUMERUS" },
+                { 13, "RADIUS" }
+            };
 
             if (args.Length == 0)
             {
                 Console.WriteLine("Assuming I'm connecting to DAQ.");
-                new Program(false, "", csvoutputfilename, ip, port);
+                new Program(false, "", csvoutputfilename, ip, port, imu_dict, period);
                 return 0;
             }
             //var command = args[0];
@@ -50,19 +74,8 @@ namespace Playground
                         return 0;
                         //break;
                     case string s when s.StartsWith("--fake"):
-                        //bool UPPER = true;
-                        //var lowbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\gait1992_imu.csv";
-                        //var uppbodyfile = @"D:\frekle\Documents\githbu\imu_driver\socket_publisher\mobl2016_imu.csv";
-                        //if (UPPER)
-                        //   dasfile = uppbodyfile;
-                        //else
-                        //    dasfile = lowbodyfile;
                         csvinputfilename = s.Substring(s.IndexOf("--fake=")+7); 
                         FAKÉ = true;
-                        //new Program(true, myarg, csvoutputfilename, ip, port);
-                        //new Program(true, args[2], csvoutputfilename);
-                        //dasfile = args[2];
-                        //Commit(args[2]);
                         break;
                     case string s when s.StartsWith("--ip"):
                         ip = s.Substring(s.IndexOf("--ip=") + 5);
@@ -70,16 +83,17 @@ namespace Playground
                     case string s when s.StartsWith("--port"):
                         port = Int32.Parse(s.Substring(s.IndexOf("--port=") + 7));
                         break;
-                    /*case string s when s.StartsWith("--period"):
+                    case string s when s.StartsWith("--period"): // Available: 100, 50, 25, 10 
                         period = Int32.Parse(s.Substring(s.IndexOf("--period=") + 9));
-                        break; */ //not that easy to change
+                        break;  //not that easy to change
                     default:
                         //new Program(false,);
                         Console.WriteLine("Invalid command");
                         return -1;
                         //break;
                 }
-            new Program(FAKÉ, csvinputfilename, csvoutputfilename, ip, port);
+
+            new Program(FAKÉ, csvinputfilename, csvoutputfilename, ip, port, imu_dict, period);
 
             return 0;
         }
@@ -93,19 +107,7 @@ namespace Playground
 
         }
 
-        DaqSystem daqSystem;
-        readonly DateTime starttime = DateTime.UtcNow;
-
-        UDPSocket c = new UDPSocket();
-
-        Dictionary<int, string> imu_dict =
-               new Dictionary<int, string>();
-
-        //StreamWriter textWriter;
-        
-        int numsamples = 0;
-
-        public DataAvailableEventArgs DistrDaq(string[] trow)
+        public DataAvailableEventArgs DistrDaq(string[] trow, Dictionary<int, string> imu_dict)
         {
             DataAvailableEventArgs e = new DataAvailableEventArgs
             {
@@ -150,18 +152,6 @@ namespace Playground
                 e.MagnetometerSamples[i, 2, 0] = float.Parse(row [I + 12]);
             }
             return e;
-        }
-
-        public string WriteQuarternion(float q0, float q1, float q2, float q3)
-        {
-            string outstr = "";
-            string formatstr = "{0:+0.0000000;-0.0000000} ";
-            outstr += string.Format(formatstr, q0);
-            outstr += string.Format(formatstr, q1);
-            outstr += string.Format(formatstr, q2);
-            outstr += string.Format(formatstr, q3);
-            return outstr;
-
         }
 
         public string WriteQuaternion(Quaternion q)
@@ -217,7 +207,7 @@ namespace Playground
             return string.Format("{0:+0.0000;-0.0000} {1:+0.0000;-0.0000} {2:+0.0000;-0.0000} ", vec.X, vec.Y, vec.Z);
         }
 
-        public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
+        public string eEeParser(DataAvailableEventArgs e, int sampleNumber, Dictionary<int, string> imu_dict)
         {            
             TimeSpan t = DateTime.UtcNow - starttime;
             string output =  string.Format("{0:0.0000000;-0.0000000} ", t.TotalSeconds);
@@ -225,58 +215,27 @@ namespace Playground
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
             {
                 int i = ele1.Key-1;
-
                 string imu = ele1.Value;
+
                 consolestring += string.Format("Imu ({1}): {0} ", imu, i+1);
-                /*
-                float q0, q1, q2, q3;
-                q0 = e.ImuSamples[i, 0, sampleNumber];
-                q1 = e.ImuSamples[i, 1, sampleNumber];
-                q2 = e.ImuSamples[i, 2, sampleNumber];
-                q3 = e.ImuSamples[i, 3, sampleNumber];
-                
-                consolestring += string.Format("Q: {0:+0.0000;-0.0000}, {1:+0.0000;-0.0000}, {2:+0.0000;-0.0000}, {3:+0.0000;-0.0000}", q0,q1,q2,q3);
-
-                //output += q0.ToString() + " ";
-                //output += q1.ToString() + " ";
-                //output += q2.ToString() + " ";
-                //output += q3.ToString() + " ";                
-                output += WriteQuarternion(q0, q1, q2, q3);
-
-                */
 
                 Quaternion q = GetQuaternion(e,sampleNumber,i);
-
-                string qs = WriteQuaternion(q);
-                consolestring += qs;
-                output += qs;
-                /*
-                output += e.AccelerometerSamples[i,0, sampleNumber].ToString() + " ";
-                output += e.AccelerometerSamples[i,1, sampleNumber].ToString() + " ";
-                output += e.AccelerometerSamples[i,2, sampleNumber].ToString() + " ";
-                output += e.GyroscopeSamples[i,0, sampleNumber].ToString() + " ";
-                output += e.GyroscopeSamples[i,1, sampleNumber].ToString() + " ";
-                output += e.GyroscopeSamples[i,2, sampleNumber].ToString() + " ";
-                output += e.MagnetometerSamples[i,0, sampleNumber].ToString() + " ";
-                output += e.MagnetometerSamples[i,1, sampleNumber].ToString() + " ";
-                output += e.MagnetometerSamples[i,2, sampleNumber].ToString() + " ";
-                */
                 Vector3 gyro = GetGyro(e, sampleNumber, i);
                 Vector3 acc = GetAccelerometer(e, sampleNumber, i);
                 Vector3 mag = GetMagnetometer(e, sampleNumber, i);
                 Vector3 linAcc = new Vector3(0, 0, 0);
 
+                string qs = WriteQuaternion(q);
+                consolestring += qs;
+                
+                output += qs;
                 output += WriteVector(gyro);
                 output += WriteVector(acc);
                 output += WriteVector(mag);
-
                 output += "0.0 "; //barometer
-                //output += "0.0 "; //linAccx
-                //output += "0.0 "; //linAccy
-                //output += "0.0 "; //linAccz
                 output += WriteVector(linAcc);
-
                 output += "0.0 "; //altitude 
+                
                 consolestring += "||";
             }
             Console.Write(consolestring);
@@ -285,15 +244,11 @@ namespace Playground
         
         }
 
-        public Program(bool FAKEDAQin, string dasfile, string csvoutputfilename, string ip, int port)
+        public Program(bool FAKEDAQin, string dasfile, string csvoutputfilename, string ip, int port, Dictionary<int, string> imu_dict, int period)
         {
             FAKEDAQ = FAKEDAQin;
             Console.SetWindowSize(200, 20);
-            ConfigureDaq(); 
-
-            imu_dict.Add(11, "TORAX");
-            imu_dict.Add(12, "HUMERUS");
-            imu_dict.Add(13, "RADIUS");
+            ConfigureDaq(imu_dict);
 
             StartServer(ip, port);
    
@@ -317,31 +272,52 @@ namespace Playground
                         //Console.WriteLine("FAKEDAQ: rowread:" + line);
                         var values = line.Split(',');
 
-                        e = DistrDaq(values);
+                        e = DistrDaq(values, imu_dict);
 
                         e.ScanNumber = 1;
-                        Capture_DataAvailable(null, e);
+                        Capture_DataAvailable(null, e, imu_dict);
 
-                        System.Threading.Thread.Sleep(1);
+                        System.Threading.Thread.Sleep(period);
                     }
                 }
             }
             else
             {
                 Console.WriteLine("Starting capture");
-                daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
+                switch (period)
+                {
+                    case 100:
+                        daqSystem.StartCapturing(DataAvailableEventPeriod.ms_100); // Available: 100, 50, 25, 10            
+                        break;
+                    case 50:
+                        daqSystem.StartCapturing(DataAvailableEventPeriod.ms_50); // Available: 100, 50, 25, 10            
+                        break;
+                    case 25:
+                        daqSystem.StartCapturing(DataAvailableEventPeriod.ms_25); // Available: 100, 50, 25, 10            
+                        break;
+                    case 10:
+                        daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
+                        break;
+                    default:
+                        Console.WriteLine("Period (in ms) needs to be  100, 50, 25, 10! Using default 10ms.");
+                        daqSystem.StartCapturing(DataAvailableEventPeriod.ms_10); // Available: 100, 50, 25, 10            
+                        break;
+                }
             }
             Console.WriteLine("Finished! press any key to send bye signal");
             Console.ReadKey();
             c.Send("BYE!");
             Console.WriteLine("Bye sent!");
-            StreamWriter textWriter = CreateCSV(csvoutputfilename);
+
+            using (StreamWriter textWriter = CreateCSV(csvoutputfilename, imu_dict))
+            {
+                textWriter.Write(outfile);
+            }
             
-            textWriter.Close();
             Console.ReadKey();
         }
 
-        StreamWriter CreateCSV(string file)
+        StreamWriter CreateCSV(string file, Dictionary<int, string> imu_dict)
         {
             StreamWriter textWriter = new StreamWriter(file);
             //textWriter = new StreamWriter(@"D:\frekle\Documents\githbu\imu_driver\socket_publisher\myfile.csv");
@@ -351,11 +327,11 @@ namespace Playground
             //writer.Configuration.Delimiter = ",";
             //writer.WriteHeader<>();
             string myheader = "";
-            foreach (string imuS in imulist)
+            foreach (var imuS in imu_dict)
             {
                 foreach (string imucolumn in imutable)
                 {
-                    myheader += imuS + imucolumn + ",";
+                    myheader += imuS.Value + imucolumn + ",";
 
                 }
 
@@ -364,12 +340,9 @@ namespace Playground
             return textWriter;
         }
 
-        string[] imutable = { "_q1",       "_q2",       "_q3",      "_q4",        "_ax",
-            "_ay",       "_az",       "_gx",      "_gy",        "_gz",
-            "_mx",       "_my",       "_mz",      "_barometer", "_linAcc_x",
-            "_linAcc_y", "_linAcc_z", "_altitude" };
 
-        string[] imulist = {"thorax","humerus","radius" };
+
+        //string[] imulist = {"thorax","humerus","radius" };
 
         private void StartServer(string ip, int port)
         {
@@ -382,12 +355,14 @@ namespace Playground
 
         }
 
-        private void ConfigureDaq()
+        private void ConfigureDaq(Dictionary<int, string> imu_dict)
         {
             // Create daqSystem object and assign the event handlers
             daqSystem = new DaqSystem();
             daqSystem.StateChanged += Device_StateChanged;
-            daqSystem.DataAvailable += Capture_DataAvailable;
+            void func(object x, DataAvailableEventArgs y) => Capture_DataAvailable(x, y, imu_dict);
+            //daqSystem.DataAvailable += Capture_DataAvailable;
+            daqSystem.DataAvailable += func;
 
             // Configure sensors
             // .InstalledSensors = 16, not the number of sensed sensors
@@ -417,7 +392,7 @@ namespace Playground
             daqSystem.ConfigureCapture(new_config);
         }
 
-        private void Capture_DataAvailable(object sender, DataAvailableEventArgs e)
+        private void Capture_DataAvailable(object sender, DataAvailableEventArgs e, Dictionary<int, string> imu_dict)
         {
             int samplesPerChannel = e.ScanNumber; // what's this?
             //Console.WriteLine("Scan number: " + e.ScanNumber);
@@ -430,7 +405,7 @@ namespace Playground
             }
             //Console.WriteLine(".");
             numsamples++;
-            string imulinestr = eEeParser(e, 0);
+            string imulinestr = eEeParser(e, 0, imu_dict);
             if (!FAKEDAQ)
                 //textWriter.WriteLine(imulinestr.Replace(' ', ','));
                 outfile+= imulinestr.Replace(' ', ',');
