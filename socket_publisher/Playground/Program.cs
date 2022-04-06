@@ -5,6 +5,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using System.Globalization;
 using Waveplus.DaqSys;
 using Waveplus.DaqSysInterface;
 using WaveplusLab.Shared.Definitions;
@@ -19,6 +21,10 @@ namespace Playground
 
         static int Main(string[] args)
         {
+            CultureInfo ci = new CultureInfo("en-UK");
+
+            Thread.CurrentThread.CurrentCulture = ci;
+            Thread.CurrentThread.CurrentUICulture = ci;
             // Display the number of command line arguments.
             Console.WriteLine(args.Length);
 
@@ -65,6 +71,9 @@ namespace Playground
                     case string s when s.StartsWith("--port"):
                         port = Int32.Parse(s.Substring(s.IndexOf("--port=") + 7));
                         break;
+                    /*case string s when s.StartsWith("--period"):
+                        period = Int32.Parse(s.Substring(s.IndexOf("--period=") + 9));
+                        break; */ //not that easy to change
                     default:
                         //new Program(false,);
                         Console.WriteLine("Invalid command");
@@ -156,8 +165,8 @@ namespace Playground
         public string eEeParser(DataAvailableEventArgs e, int sampleNumber)
         {            
             TimeSpan t = DateTime.UtcNow - starttime;
-            string output =  t.TotalSeconds.ToString() + " ";
-            string consolestring = "\r";
+            string output =  string.Format("{0:0.0000000;-0.0000000} ", t.TotalSeconds);
+            string consolestring = "\r"+output+":";
             foreach (KeyValuePair<int, string> ele1 in imu_dict)
             {
                 int i = ele1.Key-1;
