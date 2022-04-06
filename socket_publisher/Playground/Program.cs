@@ -49,6 +49,7 @@ namespace Playground
             bool FAKÉ = false;
             string csvinputfilename = "";
             int period = 10; // in milliseconds
+            bool RAW = false;
 
             Dictionary<int, string> imu_dict = new Dictionary<int, string>
             {
@@ -60,7 +61,7 @@ namespace Playground
             if (args.Length == 0)
             {
                 Console.WriteLine("Assuming I'm connecting to DAQ.");
-                new Program(false, "", csvoutputfilename, ip, port, imu_dict, period);
+                new Program(false, "", csvoutputfilename, ip, port, imu_dict, period, RAW);
                 return 0;
             }
             //var command = args[0];
@@ -93,7 +94,7 @@ namespace Playground
                         //break;
                 }
 
-            new Program(FAKÉ, csvinputfilename, csvoutputfilename, ip, port, imu_dict, period);
+            new Program(FAKÉ, csvinputfilename, csvoutputfilename, ip, port, imu_dict, period, RAW);
 
             return 0;
         }
@@ -155,8 +156,6 @@ namespace Playground
             }
             return e;
         }
-
-
 
         public Quaternion GetQuaternion(DataAvailableEventArgs e, int sampleNumber, int imuNumber)
         {
@@ -263,13 +262,16 @@ namespace Playground
         
         }
 
-        public Program(bool FAKEDAQ, string dasfile, string csvoutputfilename, string ip, int port, Dictionary<int, string> imu_dict, int period)
+        public Program(bool FAKEDAQ, string dasfile, string csvoutputfilename, string ip, int port, Dictionary<int, string> imu_dict, int period, bool RAW)
         {
             //FAKEDAQ = FAKEDAQin;
             Console.SetWindowSize(200, 20);
-            ConfigureDaq(imu_dict,FAKEDAQ);
+            ConfigureDaq(imu_dict,FAKEDAQ, RAW);
 
             StartServer(ip, port);
+
+            CalculateOwnQuaternion OC = new CalculateOwnQuaternion();
+
    
             if (FAKEDAQ)
             {
@@ -359,10 +361,6 @@ namespace Playground
             return textWriter;
         }
 
-
-
-        //string[] imulist = {"thorax","humerus","radius" };
-
         private void StartServer(string ip, int port)
         {
             //string client_ip = "127.0.0.1";
@@ -374,7 +372,7 @@ namespace Playground
 
         }
 
-        private void ConfigureDaq(Dictionary<int, string> imu_dict, bool FAKEDAQ)
+        private void ConfigureDaq(Dictionary<int, string> imu_dict, bool FAKEDAQ, bool RAW)
         {
             // Create daqSystem object and assign the event handlers
             daqSystem = new DaqSystem();
@@ -405,10 +403,13 @@ namespace Playground
             }
 
             Console.WriteLine("Configuring capture");
-            var new_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused6xData_142Hz };
-            //var old_config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData };
+            var config = new CaptureConfiguration();
+            if (RAW)
+                { config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused6xData_142Hz }; }
+            else
+                { config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData }; }
             //daqSystem.ConfigureCapture(old_config);
-            daqSystem.ConfigureCapture(new_config);
+            daqSystem.ConfigureCapture(config);
         }
 
         private void Capture_DataAvailable(object sender, DataAvailableEventArgs e, Dictionary<int, string> imu_dict, bool FAKEDAQ)
