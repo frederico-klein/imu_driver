@@ -11,11 +11,12 @@ import sys, traceback
 import socket
 import time
 import csv
+import numpy as np
 
 now = str(time.time()) + " "
 
 class Sender:
-    def __init__(self, FILENAME, hostname="0.0.0.0", period = 0.01, repeat = False):
+    def __init__(self, FILENAME, hostname="0.0.0.0", period = 0.01, repeat = False, msggen = "csv", num_imus = 3):
         self.serverAddressPort   = (hostname, 8080 )
         self.bufferSize          = 4096
         self.period = period # in seconds
@@ -23,14 +24,21 @@ class Sender:
         self.UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.FILENAME= FILENAME
         self.repeat = repeat
-        self.range = 3 # number of imus to print
+        self.range = num_imus # number of imus to print
         self.rangelist = slice(18*self.range+1)
+        self.labels = None
+
+        if msggen == "csv":
+            self.gen = self.getreadfromcsv
+        else:
+            self.gen = self.genmsg
 
     def genmsg(self):
-        NUM_IMU = 10
+        NUM_IMU = self.range
         #msgFromClient       = "Hello UDP Server"
-        msgFromClient       = now + ("".join([(str(float(x/100))+" ")*NUM_IMU for x in range(0,18)])) 
-        return msgFromClient
+        msgFromClient       = [str(time.time())]+[str(a) for a in list(np.concatenate(( [ list(np.array([ float(x/100) for x in range(0,18)] )+imu_num) for imu_num in range(NUM_IMU) ]))) ]
+        #print(msgFromClient)
+        yield msgFromClient
 
     def getreadfromcsv(self):
         with open(self.FILENAME) as csvfile:
@@ -40,7 +48,7 @@ class Sender:
                 next(line) ## trying to skip the header
                 next(line) ## trying to skip the header
                 next(line) ## trying to skip the header
-                if self.range is 1:
+                if self.range == 1:
                     self.labels = [a.split("thorax_")[-1] for a in next(line)[self.rangelist]] ## this line has the actual labels, if you want them
                 else:
                     self.labels = [a for a in next(line)[self.rangelist]] ## this line has the actual labels, if you want them
@@ -61,11 +69,15 @@ class Sender:
         #try:
             self.UDPClientSocket.settimeout(0.1)
             
-            for i,msg in enumerate(self.getreadfromcsv()):
+            for i,msg in enumerate(self.gen()):
                 #if i > 200:
                 #    break
                 #print("\t".join(self.labels))
-                print(tabulate([msg], headers=self.labels, floatfmt="+2.3f"))
+                if self.labels:
+                    print(tabulate([msg], headers=self.labels, floatfmt="+2.3f"))
+                else:
+                    print(tabulate([msg], floatfmt="+2.3f"))
+
                 jointmsg = " ".join(msg)
                 #print(jointmsg)
                 #print(msg)
