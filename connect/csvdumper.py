@@ -6,7 +6,7 @@ Spyder Editor
 
 This is a temporary script file.
 """
-
+from tabulate import tabulate
 import sys, traceback
 import socket
 import time
@@ -23,6 +23,8 @@ class Sender:
         self.UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.FILENAME= FILENAME
         self.repeat = repeat
+        self.range = 3 # number of imus to print
+        self.rangelist = slice(18*self.range+1)
 
     def genmsg(self):
         NUM_IMU = 10
@@ -38,14 +40,17 @@ class Sender:
                 next(line) ## trying to skip the header
                 next(line) ## trying to skip the header
                 next(line) ## trying to skip the header
-            
-                next(line) ## this line has the actual labels, if you want them
+                if self.range is 1:
+                    self.labels = [a.split("thorax_")[-1] for a in next(line)[self.rangelist]] ## this line has the actual labels, if you want them
+                else:
+                    self.labels = [a for a in next(line)[self.rangelist]] ## this line has the actual labels, if you want them
+
                 for a in line:
                     if self.repeat:
                         ## need to use actual time, or it will break when i loop
                         a[0]=str(time.time())
                     # like use as a generator?
-                    yield " ".join(a)
+                    yield ["{:+.5f}".format(float(i)) for i in a][self.rangelist]
                 if self.repeat:
                     csvfile.seek(0)
                 else:
@@ -59,8 +64,12 @@ class Sender:
             for i,msg in enumerate(self.getreadfromcsv()):
                 #if i > 200:
                 #    break
-                print(msg)
-                bytesToSend = str.encode(msg)
+                #print("\t".join(self.labels))
+                print(tabulate([msg], headers=self.labels, floatfmt="+2.3f"))
+                jointmsg = " ".join(msg)
+                #print(jointmsg)
+                #print(msg)
+                bytesToSend = str.encode(jointmsg)
                 # Send to server using created UDP socket
                 RECVOK = False
                 while not RECVOK:
@@ -75,7 +84,7 @@ class Sender:
                         pass
                         
                 msg_rec = "Message from Server {}".format(msgFromServer[0])
-                print(msg_rec)
+                #print(msg_rec)
                 time.sleep(self.period)
             self.UDPClientSocket.sendto(str.encode("BYE!"), self.serverAddressPort)
             print("finished!")
