@@ -78,6 +78,10 @@ namespace Playground
                         csvinputfilename = s.Substring(s.IndexOf("--fake=")+7); 
                         FAKÉ = true;
                         break;
+                    case string s when s.StartsWith("--raw"):
+                        csvinputfilename = s.Substring(s.IndexOf("--raw=") + 6);
+                        RAW = true;
+                        break;
                     case string s when s.StartsWith("--ip"):
                         ip = s.Substring(s.IndexOf("--ip=") + 5);
                         break;
@@ -270,7 +274,7 @@ namespace Playground
 
             StartServer(ip, port);
 
-            CalculateOwnQuaternion OC = new CalculateOwnQuaternion();
+            //CalculateOwnQuaternion OC = new CalculateOwnQuaternion();
 
    
             if (FAKEDAQ)
@@ -305,6 +309,8 @@ namespace Playground
             else
             {
                 Console.WriteLine("Starting capture");
+                Console.WriteLine("Choosing period: " + period.ToString());
+
                 switch (period)
                 {
                     case 100:
@@ -405,9 +411,15 @@ namespace Playground
             Console.WriteLine("Configuring capture");
             var config = new CaptureConfiguration();
             if (RAW)
-                { config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused6xData_142Hz }; }
+            {
+                Console.WriteLine("Choosing RAW output. ");
+                config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData };
+            }
             else
-                { config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.RawData }; }
+            {
+                Console.WriteLine("Choosing quaternions.");
+                config = new CaptureConfiguration { SamplingRate = SamplingRate.Hz_2000, IMU_AcqType = ImuAcqType.Fused6xData_142Hz };
+            }
             //daqSystem.ConfigureCapture(old_config);
             daqSystem.ConfigureCapture(config);
         }
