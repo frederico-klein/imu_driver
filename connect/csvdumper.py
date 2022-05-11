@@ -16,7 +16,7 @@ import numpy as np
 now = str(time.time()) + " "
 
 class Sender:
-    def __init__(self, FILENAME, hostname="0.0.0.0", period = 0.01, repeat = False, msggen = "csv", num_imus = 3):
+    def __init__(self, FILENAME, hostname="0.0.0.0", period = 0.01, repeat = False, msggen = "csv", num_imus = 8):
         self.serverAddressPort   = (hostname, 8080 )
         self.bufferSize          = 4096
         self.period = period # in seconds
@@ -38,7 +38,8 @@ class Sender:
         #msgFromClient       = "Hello UDP Server"
         msgFromClient       = [str(time.time())]+[str(a) for a in list(np.concatenate(( [ list(np.array([ float(x/100) for x in range(0,18)] )+imu_num) for imu_num in range(NUM_IMU) ]))) ]
         #print(msgFromClient)
-        yield msgFromClient
+        while(True):
+            yield msgFromClient
 
     def getreadfromcsv(self):
         with open(self.FILENAME) as csvfile:
@@ -79,7 +80,7 @@ class Sender:
                     print(tabulate([msg], floatfmt="+2.3f"))
 
                 jointmsg = " ".join(msg)
-                #print(jointmsg)
+                print(jointmsg)
                 #print(msg)
                 bytesToSend = str.encode(jointmsg)
                 # Send to server using created UDP socket
@@ -91,7 +92,7 @@ class Sender:
                         msgFromServer = self.UDPClientSocket.recvfrom(self.bufferSize)
                         RECVOK = True
                     except socket.timeout:
-                        print("stuck!")
+                        print("\rstuck!", end='')
                         time.sleep(self.period/2)
                         pass
                         
