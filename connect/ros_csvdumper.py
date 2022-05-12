@@ -6,31 +6,31 @@ Spyder Editor
 
 This is a temporary script file.
 """
-from tabulate import tabulate
 import sys, traceback
 import socket
-import time
 import csv
 import numpy as np
+import rospy
 
-now = str(time.time()) + " "
-
-def myprint(stuff):
-    if False:
-        print(stuff)
 
 class Sender:
-    def __init__(self, FILENAME, hostname="0.0.0.0", period = 0.01, repeat = False, msggen = "csv", num_imus = 8):
+    def __init__(self, FILENAME, hostname="0.0.0.0", period = 0.01, repeat = True, msggen = "csv", num_imus = 8, artificial_time = True):
+        rospy.init_node("csv_dumper")
         self.serverAddressPort   = (hostname, 8080 )
         self.bufferSize          = 4096
-        self.period = period # in seconds
+        self.rate = rospy.Rate(1/ period) # in seconds
         # Create a UDP socket at client side
         self.UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.UDPClientSocket.setblocking(False)
         self.FILENAME= FILENAME
         self.repeat = repeat
-        self.range = num_imus # number of imus to myprint
+        self.range = num_imus # number of imus to print
         self.rangelist = slice(18*self.range+1)
         self.labels = None
+        self.artificial_time = artificial_time
+        self.t0 = rospy.Time().now().to_sec()
+        self.t = self.t0
+        self.period = period
 
         if msggen == "csv":
             self.gen = self.getreadfromcsv
@@ -40,14 +40,14 @@ class Sender:
     def genmsg(self):
         NUM_IMU = self.range
         #msgFromClient       = "Hello UDP Server"
-        msgFromClient       = [str(time.time())]+[str(a) for a in list(np.concatenate(( [ list(np.array([ float(x/100) for x in range(0,18)] )+imu_num) for imu_num in range(NUM_IMU) ]))) ]
-        #myprint(msgFromClient)
+        msgFromClient       = [str(rospy.Time().now().to_sec())]+[str(a) for a in list(np.concatenate(( [ list(np.array([ float(x/100) for x in range(0,18)] )+imu_num) for imu_num in range(NUM_IMU) ]))) ]
+        #print(msgFromClient)
         while(True):
             yield msgFromClient
 
     def getreadfromcsv(self):
         with open(self.FILENAME) as csvfile:
-            while(True):
+            while not rospy.is_shutdown():
                 line = csv.reader(csvfile)
                 next(line) ## trying to skip the header
                 next(line) ## trying to skip the header
@@ -59,9 +59,15 @@ class Sender:
                     self.labels = [a for a in next(line)[self.rangelist]] ## this line has the actual labels, if you want them
 
                 for a in line:
+                    if rospy.is_shutdown():
+                        break
                     if self.repeat:
                         ## need to use actual time, or it will break when i loop
-                        a[0]=str(time.time())
+                        if self.artificial_time:
+                            self.t += self.period 
+                        else:
+                            self.t = rospy.Time().now().to_sec()
+                        a[0]=str(self.t)
                     # like use as a generator?
                     yield ["{:+.5f}".format(float(i)) for i in a][self.rangelist]
                 if self.repeat:
@@ -75,42 +81,34 @@ class Sender:
             self.UDPClientSocket.settimeout(0.1)
             
             for i,msg in enumerate(self.gen()):
-                #if i > 200:
-                #    break
-                #myprint("\t".join(self.labels))
-                if self.labels:
-                    myprint(tabulate([msg], headers=self.labels, floatfmt="+2.3f"))
-                else:
-                    myprint(tabulate([msg], floatfmt="+2.3f"))
-
                 jointmsg = " ".join(msg)
-                myprint(jointmsg)
-                #myprint(msg)
                 bytesToSend = str.encode(jointmsg)
                 # Send to server using created UDP socket
                 RECVOK = False
                 while not RECVOK:
                     try:
-
                         self.UDPClientSocket.sendto(bytesToSend, self.serverAddressPort)
                         msgFromServer = self.UDPClientSocket.recvfrom(self.bufferSize)
                         RECVOK = True
                     except socket.timeout:
-                        print("\rstuck!", end='')
-                        time.sleep(self.period/2)
-                        pass
+                        rospy.logwarn_once("stuck!")
+                        self.rate.sleep()
                         
                 msg_rec = "Message from Server {}".format(msgFromServer[0])
-                #myprint(msg_rec)
-                time.sleep(self.period)
+                #print(msg_rec)
+                if rospy.is_shutdown():
+                    break
+                self.rate.sleep()
             self.UDPClientSocket.sendto(str.encode("BYE!"), self.serverAddressPort)
-            myprint("finished!")
+            rospy.loginfo("finished!")
         #except:
-        #    traceback.myprint_exc(file=sys.stdout)
+        #    traceback.print_exc(file=sys.stdout)
 
 
 
 if __name__ == "__main__":
-
-    A = Sender("gait1992_imu.csv", hostname="0.0.0.0", period=0.06)
-    A.loopsend()
+    try:
+        A = Sender("gait1992_imu.csv", hostname="0.0.0.0", period=0.01)
+        A.loopsend()
+    except rospy.ROSInterruptException:
+        pass
